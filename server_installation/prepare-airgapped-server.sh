@@ -30,7 +30,7 @@ sudo bash -c "cat > /lib/systemd/system/andruav_turn.service <<EOL
 
  [Service]
  Type=single
- ExecStart=/usr/bin/turnserver -L ${DOMAIN_NAME} -a -f -r airgap.droneengage.com -v --user airgap:1234 --simple-log
+ ExecStart=/usr/bin/turnserver -L ${DOMAIN_NAME} -a -f -r ${DOMAIN_NAME} -v --user airgap:1234 --simple-log
 
 
  Restart=on-failure

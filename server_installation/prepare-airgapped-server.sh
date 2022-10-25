@@ -155,7 +155,7 @@ sudo apt install -y nodejs
 ###################################### PM2
  
 echo -e $GREEN "Install PM2" $NC
-sudo npm install -g pm2 
+sudo npm install -g pm2  -timeout=9999999
 pm2 startup
 
 
@@ -167,7 +167,7 @@ sudo apt install -y git
 
 ###################################### NODE-HTTP-SERVER
 echo -e $GREEN "Install Http-Server" $NC
-sudo npm install http-server -g
+sudo npm install http-server -g -timeout=9999999
 
 
 ###################################### Local Maps
@@ -198,7 +198,7 @@ git clone -b release --single-branch https://github.com/HefnySco/andruav_authent
 
 pushd ~/andruav_authenticator
 echo -e $BLUE "installing nodejs modules" $NC
-npm install
+npm install -timeout=9999999 
 echo -e $BLUE "linking ssl folder" $NC
 ln -s ~/ssl ./ssl
 echo -e $BLUE "register as a service in pm2" $NC
@@ -220,7 +220,7 @@ git clone -b release --single-branch https://github.com/HefnySco/andruav_server.
 
 echo -e $BLUE "installing nodejs modules" $NC
 pushd ~/andruav_server
-npm install
+npm install -timeout=9999999
 cd server
 echo -e $BLUE "linking ssl folder" $NC
 ln -s ~/ssl ./ssl
@@ -243,7 +243,7 @@ git clone -b release --single-branch https://github.com/HefnySco/andruav_webclie
 
 echo -e $BLUE "installing nodejs modules" $NC
 pushd ~/andruav_webclient
-npm install
+npm install -timeout=9999999
 echo -e $BLUE "linking ssl folder" $NC
 ln -s ~/ssl ./ssl
 echo -e $BLUE "register as a service in pm2" $NC

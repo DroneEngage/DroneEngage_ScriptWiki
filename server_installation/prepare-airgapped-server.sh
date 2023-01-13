@@ -196,7 +196,7 @@ echo -e $BLUE "downloading release code" $NC
 cd ~
 git clone -b release --single-branch https://github.com/DroneEngage/droneenage_authenticator.git --depth 1
 
-pushd ~/andruav_authenticator
+pushd ~/droneenage_authenticator
 echo -e $BLUE "installing nodejs modules" $NC
 npm install -timeout=9999999 
 echo -e $BLUE "linking ssl folder" $NC

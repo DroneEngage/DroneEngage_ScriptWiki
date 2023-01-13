@@ -19,10 +19,10 @@ echo -e $GREEN "Install CoTurn" $NC
 sudo apt install -y coturn
 
 echo -e $BLUE "Run CoTurn as a Service" $NC
-sudo touch /lib/systemd/system/andruav_turn.service
-sudo bash -c "cat > /lib/systemd/system/andruav_turn.service <<EOL
+sudo touch /lib/systemd/system/droneengage_turn.service
+sudo bash -c "cat > /lib/systemd/system/droneengage_turn.service <<EOL
 [Unit]
- Description=Ardruav Turn Server
+ Description=DroneEngage Turn Server
  After=multi-user.target
 
 #Wants=network-online.target
@@ -40,8 +40,8 @@ sudo bash -c "cat > /lib/systemd/system/andruav_turn.service <<EOL
 
 EOL
 "
-sudo systemctl enable andruav_turn.service
-sudo systemctl start andruav_turn.service
+sudo systemctl enable droneengage_turn.service
+sudo systemctl start droneengage_turn.service
 
 
 
@@ -176,7 +176,7 @@ echo -e $GREEN "Install Local Maps" $NC
 mkdir ~/map ~/map/cachedMap
 
 
-pushd  ~/map/cachedMaps
+pushd  ~/map/cachedMap
 echo -e $YELLOW "Put cached IMAGES at ${PWD}" $NC
 sudo pm2 startup
 sudo pm2 start http-server  -n map_server -x  -- ~/map/cachedMap  -p 88 -C ~/ssl/localssl.crt -K ~/ssl/localssl.key  --ssl
@@ -191,7 +191,7 @@ read -p "Press any key to proceed " k
 
 ###################################### Andruav-Authenticator
 
-echo -e $GREEN "Andruav-Authenticator" $NC
+echo -e $GREEN "DroneEngage-Authenticator" $NC
 echo -e $BLUE "downloading release code" $NC
 cd ~
 git clone -b release --single-branch https://github.com/HefnySco/andruav_authenticator.git --depth 1
@@ -202,8 +202,8 @@ npm install -timeout=9999999
 echo -e $BLUE "linking ssl folder" $NC
 ln -s ~/ssl ./ssl
 echo -e $BLUE "register as a service in pm2" $NC
-sudo pm2 delete andruav_auth
-sudo pm2 start server.js  -n andruav_auth
+sudo pm2 delete droneengage_auth
+sudo pm2 start server.js  -n droneengage_auth
 sudo pm2 save
 popd
 
@@ -213,7 +213,7 @@ popd
 
 ###################################### Andruav-Server
 
-echo -e $GREEN "Andruav-Server" $NC
+echo -e $GREEN "DroneEngage-Server" $NC
 echo -e $BLUE "downloading release code" $NC
 cd ~
 git clone -b release --single-branch https://github.com/HefnySco/andruav_server.git --depth 1
@@ -226,8 +226,8 @@ echo -e $BLUE "linking ssl folder" $NC
 ln -s ~/ssl ./ssl
 cd ..
 echo -e $BLUE "register as a service in pm2" $NC
-sudo pm2 delete andruav_server
-sudo pm2 start server.js  -n andruav_server
+sudo pm2 delete droneengage_server
+sudo pm2 start server.js  -n droneengage_server
 sudo pm2 save
 popd
 
@@ -236,7 +236,7 @@ popd
 
 ###################################### Andruav-WebClient
 
-echo -e $GREEN "andruav_webclient" $NC
+echo -e $GREEN "DroneEngage-Webclient" $NC
 echo -e $BLUE "downloading release code" $NC
 cd ~
 git clone -b release --single-branch https://github.com/HefnySco/andruav_webclient.git --depth 1

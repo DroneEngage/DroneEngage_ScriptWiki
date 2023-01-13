@@ -194,7 +194,7 @@ read -p "Press any key to proceed " k
 echo -e $GREEN "DroneEngage-Authenticator" $NC
 echo -e $BLUE "downloading release code" $NC
 cd ~
-git clone -b release --single-branch https://github.com/HefnySco/andruav_authenticator.git --depth 1
+git clone -b release --single-branch https://github.com/DroneEngage/droneenage_authenticator.git --depth 1
 
 pushd ~/andruav_authenticator
 echo -e $BLUE "installing nodejs modules" $NC
@@ -216,7 +216,7 @@ popd
 echo -e $GREEN "DroneEngage-Server" $NC
 echo -e $BLUE "downloading release code" $NC
 cd ~
-git clone -b release --single-branch https://github.com/HefnySco/andruav_server.git --depth 1
+git clone -b release --single-branch https://github.com/DroneEngage/droneengage_server.git --depth 1
 
 echo -e $BLUE "installing nodejs modules" $NC
 pushd ~/andruav_server
@@ -239,7 +239,8 @@ popd
 echo -e $GREEN "DroneEngage-Webclient" $NC
 echo -e $BLUE "downloading release code" $NC
 cd ~
-git clone -b release --single-branch https://github.com/HefnySco/andruav_webclient.git --depth 1
+
+git clone -b release --single-branch https://github.com/DroneEngage/droneengage_webclient.git --depth 1
 
 echo -e $BLUE "installing nodejs modules" $NC
 pushd ~/andruav_webclient

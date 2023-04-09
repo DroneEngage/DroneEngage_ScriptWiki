@@ -191,7 +191,7 @@ read -p "Press any key to proceed " k
 
 
 
-###################################### Andruav-Authenticator
+###################################### DroneEngage-Authenticator
 
 echo -e $GREEN "DroneEngage-Authenticator" $NC
 echo -e $BLUE "downloading release code" $NC
@@ -213,7 +213,7 @@ popd
  fullchain.pem  privkey.pem 
 
 
-###################################### Andruav-Server
+###################################### DroneEngage-Server
 
 echo -e $GREEN "DroneEngage-Server" $NC
 echo -e $BLUE "downloading release code" $NC
@@ -236,7 +236,7 @@ popd
 
 
 
-###################################### Andruav-WebClient
+###################################### DroneEngage-WebClient
 
 echo -e $GREEN "DroneEngage-Webclient" $NC
 echo -e $BLUE "downloading release code" $NC

@@ -148,9 +148,6 @@ read -p "Press any key to proceed " k
 ###################################### NODEJS 
 
 echo -e $GREEN "Install NodeJS" $NC
-curl -sSL https://deb.nodesource.com/setup_16.x | sudo bash -
-sudo apt install -y nodejs
-
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash - 
 sudo apt-get install -y nodejs
 

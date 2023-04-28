@@ -1,2 +1,2 @@
-# andruav_droneengane_scripts
-This repository contains different scripts used in Andruav &amp; DroneEngage  
+# DroneEngage Scripts Wiki
+This repository contains different scripts used in DroneEngage  

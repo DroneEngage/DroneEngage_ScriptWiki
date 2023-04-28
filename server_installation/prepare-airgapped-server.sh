@@ -50,8 +50,8 @@ sudo systemctl start droneengage_turn.service
 mkdir -p ~/ssl
 
 
-touch ~/ssl/localssl.crt
-cat > ~/ssl/localssl.crt <<EOL
+touch ~/ssl/fullchain.pem
+cat > ~/ssl/fullchain.pem <<EOL
 -----BEGIN CERTIFICATE-----
 MIICNzCCAd2gAwIBAgIRAJcvjtUOW4q1YHEBwF7OvjcwCgYIKoZIzj0EAwIwNjER
 MA8GA1UEChMITG9jYWwgQ0ExITAfBgNVBAMTGExvY2FsIENBIEludGVybWVkaWF0
@@ -80,8 +80,8 @@ VXzG85bfmkTIuL9fae2UBB6nMEN/adWJvmKfqA==
 -----END CERTIFICATE-----
 EOL
 
-touch ~/ssl/localssl.key
-cat > ~/ssl/localssl.key <<EOL
+touch ~/ssl/privkey.pem
+cat > ~/ssl/privkey.pem <<EOL
 -----BEGIN EC PRIVATE KEY-----
 MHcCAQEEIJZ30pmzQctlhI92k+FuggfovqshM5GDiQFIzAOBU8jsoAoGCCqGSM49
 AwEHoUQDQgAEp1LSvpc2z/HcxIKVsJedC/Bc8idGQnvjrRlHPvH1uMAqq0d6ANqw
@@ -120,7 +120,7 @@ read -p "Press any key to proceed " k
 
 ###################################### DNS 
 
-echo  "${IP}          airgap.droneengage.com" | sudo tee -a  /etc/hosts
+echo  "${IP}          {$DOMAIN_NAME}" | sudo tee -a  /etc/hosts
 
 echo -e $GREEN "Install DNS Server and register your domain" $NC
 sudo apt install -y dnsmasq
@@ -148,9 +148,8 @@ read -p "Press any key to proceed " k
 ###################################### NODEJS 
 
 echo -e $GREEN "Install NodeJS" $NC
-curl -sSL https://deb.nodesource.com/setup_16.x | sudo bash -
-sudo apt install -y nodejs
-
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash - 
+sudo apt-get install -y nodejs
 
 ###################################### PM2
  
@@ -189,14 +188,14 @@ read -p "Press any key to proceed " k
 
 
 
-###################################### Andruav-Authenticator
+###################################### DroneEngage-Authenticator
 
 echo -e $GREEN "DroneEngage-Authenticator" $NC
 echo -e $BLUE "downloading release code" $NC
 cd ~
-git clone -b release --single-branch https://github.com/DroneEngage/droneenage_authenticator.git --depth 1
+git clone -b release --single-branch https://github.com/DroneEngage/droneenage_authenticator.git --depth 1 ./droneengage_authenticator
 
-pushd ~/andruav_authenticator
+pushd ~/droneengage_authenticator
 echo -e $BLUE "installing nodejs modules" $NC
 npm install -timeout=9999999 
 echo -e $BLUE "linking ssl folder" $NC
@@ -208,18 +207,18 @@ sudo pm2 save
 popd
 
 
+ fullchain.pem  privkey.pem 
 
 
-
-###################################### Andruav-Server
+###################################### DroneEngage-Server
 
 echo -e $GREEN "DroneEngage-Server" $NC
 echo -e $BLUE "downloading release code" $NC
 cd ~
-git clone -b release --single-branch https://github.com/DroneEngage/droneengage_server.git --depth 1
+git clone -b release --single-branch https://github.com/DroneEngage/droneengage_server.git --depth 1 ./droneengage_server
 
 echo -e $BLUE "installing nodejs modules" $NC
-pushd ~/andruav_server
+pushd ~/droneengage_server
 npm install -timeout=9999999
 cd server
 echo -e $BLUE "linking ssl folder" $NC
@@ -234,16 +233,16 @@ popd
 
 
 
-###################################### Andruav-WebClient
+###################################### DroneEngage-WebClient
 
 echo -e $GREEN "DroneEngage-Webclient" $NC
 echo -e $BLUE "downloading release code" $NC
 cd ~
 
-git clone -b release --single-branch https://github.com/DroneEngage/droneengage_webclient.git --depth 1
+git clone -b release --single-branch https://github.com/DroneEngage/droneengage_webclient.git --depth 1 ./droneengage_webclient
 
 echo -e $BLUE "installing nodejs modules" $NC
-pushd ~/andruav_webclient
+pushd ~/droneengage_webclient
 npm install -timeout=9999999
 echo -e $BLUE "linking ssl folder" $NC
 ln -s ~/ssl ./ssl

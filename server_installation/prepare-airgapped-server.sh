@@ -2,8 +2,20 @@
 
 ###Air Gapped Server on Raspberry PI
 
+
+
 DOMAIN_NAME='airgap.droneengage.com'
 IP='192.168.1.161'
+MACHINE_IP='192.168.1.161'
+EXTERNAL_IP='192.168.1.161'  ## same as MACHINE_IP if MACHINE_IP is real ip.
+MIN_WEBRTC_PORTS=20000
+MAX_WEBRTC_PORTS=40000
+TURN_PWD='airgap:1234'
+
+
+REPOSITORY_AUTH='https://github.com/DroneEngage/droneenage_authenticator.git'
+REPOSITORY_SERVER='https://github.com/DroneEngage/droneengage_server.git'
+REPOSITORY_WEBCLIENT='https://github.com/DroneEngage/droneengage_webclient.git'
 
 RED='\033[1;31m'
 GREEN='\033[1;32m'
@@ -19,29 +31,21 @@ echo -e $GREEN "Install CoTurn" $NC
 sudo apt install -y coturn
 
 echo -e $BLUE "Run CoTurn as a Service" $NC
-sudo touch /lib/systemd/system/droneengage_turn.service
-sudo bash -c "cat > /lib/systemd/system/droneengage_turn.service <<EOL
-[Unit]
- Description=DroneEngage Turn Server
- After=multi-user.target
 
-#Wants=network-online.target
-#After=network.target
-
- [Service]
- Type=single
- ExecStart=/usr/bin/turnserver -L ${DOMAIN_NAME} -a -f -r ${DOMAIN_NAME} -v --user airgap:1234 --simple-log
-
-
- Restart=on-failure
-
- [Install]
- WantedBy=multi-user.target
-
+sudo touch /etc/turnserver.conf 
+sudo bash -c "cat > /etc/turnserver.conf  <<EOL
+listening-port=3478
+tls-listening-port=5349
+listening-ip=${MACHINE_IP}
+relay-ip=${MACHINE_IP}
+min-port=${MIN_WEBRTC_PORTS}
+max-port=${MAX_WEBRTC_PORTS}
+fingerprint
+lt-cred-mech
+server-name=${DOMAIN_NAME}
+user=${TURN_PWD}
 EOL
 "
-sudo systemctl enable droneengage_turn.service
-sudo systemctl start droneengage_turn.service
 
 
 
@@ -178,7 +182,7 @@ mkdir ~/map ~/map/cachedMap
 pushd  ~/map/cachedMap
 echo -e $YELLOW "Put cached IMAGES at ${PWD}" $NC
 sudo pm2 startup
-sudo pm2 start http-server  -n map_server -x  -- ~/map/cachedMap  -p 88 -C ~/ssl/localssl.crt -K ~/ssl/localssl.key  --ssl
+sudo pm2 start http-server  -n map_server -x  -- ~/map/cachedMap  -p 88 -C ~/ssl/fullchain.pem -K ~/ssl/privkey.pem  --ssl
 sudo pm2 save
 sudo pm2 list
 echo -e $YELLOW "Images are exposed as https://${DOMAIN_NAME}:88/." $NC
@@ -193,7 +197,7 @@ read -p "Press any key to proceed " k
 echo -e $GREEN "DroneEngage-Authenticator" $NC
 echo -e $BLUE "downloading release code" $NC
 cd ~
-git clone -b release --single-branch https://github.com/DroneEngage/droneenage_authenticator.git --depth 1 ./droneengage_authenticator
+git clone -b release --single-branch ${REPOSITORY_AUTH} --depth 1 ./droneengage_authenticator
 
 pushd ~/droneengage_authenticator
 echo -e $BLUE "installing nodejs modules" $NC
@@ -215,7 +219,7 @@ popd
 echo -e $GREEN "DroneEngage-Server" $NC
 echo -e $BLUE "downloading release code" $NC
 cd ~
-git clone -b release --single-branch https://github.com/DroneEngage/droneengage_server.git --depth 1 ./droneengage_server
+git clone -b release --single-branch ${REPOSITORY_SERVER} --depth 1 ./droneengage_server
 
 echo -e $BLUE "installing nodejs modules" $NC
 pushd ~/droneengage_server
@@ -239,7 +243,7 @@ echo -e $GREEN "DroneEngage-Webclient" $NC
 echo -e $BLUE "downloading release code" $NC
 cd ~
 
-git clone -b release --single-branch https://github.com/DroneEngage/droneengage_webclient.git --depth 1 ./droneengage_webclient
+git clone -b release --single-branch ${REPOSITORY_WEBCLIENT} --depth 1 ./droneengage_webclient
 
 echo -e $BLUE "installing nodejs modules" $NC
 pushd ~/droneengage_webclient

@@ -151,9 +151,25 @@ read -p "Press any key to proceed " k
 
 ###################################### NODEJS 
 
-echo -e $GREEN "Install NodeJS" $NC
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash - 
-sudo apt-get install -y nodejs
+
+if command -v node &>/dev/null; then
+  echo -e "${GREEN}Node.js is already installed. Skipping installation.${NC}"
+else
+  echo -e $GREEN "Install NodeJS" $NC
+  sudo apt-get update
+  sudo apt-get install -y ca-certificates curl gnupg
+  sudo mkdir -p /etc/apt/keyrings
+  curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+  NODE_MAJOR=18
+  echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+  sudo apt-get update
+  sudo apt-get install nodejs -y
+  sudo npm install -g npm@latest
+fi
+node -v
+npm -v
+
+read -p "Press any key to proceed " k
 
 ###################################### PM2
  

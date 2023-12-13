@@ -2,7 +2,7 @@
 
 ###Air Gapped Server on Raspberry PI
 
-
+SCRIPT_VERSION='2.0'
 
 DOMAIN_NAME='airgap.droneengage.com'
 IP='192.168.1.161'
@@ -11,6 +11,9 @@ EXTERNAL_IP='192.168.1.161'  ## same as MACHINE_IP if MACHINE_IP is real ip.
 MIN_WEBRTC_PORTS=20000
 MAX_WEBRTC_PORTS=40000
 TURN_PWD='airgap:1234'
+
+## NODEJS Version
+NODE_MAJOR=18
 
 
 REPOSITORY_AUTH='https://github.com/DroneEngage/droneenage_authenticator.git'
@@ -23,9 +26,45 @@ YELLOW='\033[1;33m'
 BLUE='\033[1;34m'
 NC='\033[0m' # No Color
 
+
+
+echo -e $YELLOW "INSTALLING AIRGAP SERVER FOR DRONEENGAGE" $NC
+echo -e $YELLOW "For mode details: https://youtu.be/R1BedRTxuuY" $NC
+echo -e $GREEN "script version $SCRIPT_VERSION"
+read -p "Press any key to proceed " k
+
+
+
 sudo apt update
 
 
+###################################### GET IP of the SERVER
+# Prompt the user for an IP address
+
+while true; do
+  echo -e $GREEN "You need to write the static IP of this server" $NC
+  read -p "Enter an IP address of this server : " ip_address
+
+  # Validate the IP address format
+  if [[ ! $ip_address =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+    echo -e $YELLOW  "Invalid IP address format. Please try again." $NC
+    continue
+  fi
+
+  # Confirm the entered IP address
+  read -p "You entered $ip_address. Is this correct? [y/n]: " confirm
+  
+  # Check the user's confirmation
+  if [[ $confirm =~ ^[Yy]$ ]]; then
+    IP=$ip_address
+    MACHINE_IP=$IP
+    EXTERNAL_IP=$IP
+    echo -e $GREEN "IP address confirmed: $IP" $NC
+    break
+  else
+    echo -e $YELLOW  "IP address confirmation declined." $NC
+  fi
+done
 ###################################### COTURN
 echo -e $GREEN "Install CoTurn" $NC
 sudo apt install -y coturn
@@ -50,7 +89,6 @@ EOL
 
 
 ###################################### SSL 
-
 mkdir -p ~/ssl
 
 
@@ -109,15 +147,15 @@ LQIhAJG6Q5lfcsDWmS7M+KMWf19H/ZaHqgrPBwgCA9sc5kl+
 EOL
 
 
-pushd ~/ssl
 echo -e $YELLOW "You need to have SSL Certificate at folder at ${PWD}" $NC
 echo -e $YELLOW "SSL name should be  localssl.crt  and localssl.key at at ${PWD}" $NC
+echo -e $GREEN  "IMPOIRTANT!" $NC
 echo -e $YELLOW "root.crt certificate needs to be added to all your browsers and Android phones to access this private ssl certificate." $NC
-echo -e $YELLOW "A working certificate has been created for you. but you can replace it with your own." $NC
-popd
+echo -e $YELLOW "Note: a working certificate has been created for you. but you can replace it with your own." $NC
+
 
 #register the root.crt so that NOW identifies it to validate ssl certificates.
-echo 'export NODE_EXTRA_CA_CERTS=/home/pi/ssl/root.crt' | sudo tee -a /etc/profile
+echo "export NODE_EXTRA_CA_CERTS=/home/$USER/ssl/root.crt" | sudo tee -a /etc/profile
 
 read -p "Press any key to proceed " k
 
@@ -160,7 +198,7 @@ else
   sudo apt-get install -y ca-certificates curl gnupg
   sudo mkdir -p /etc/apt/keyrings
   curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-  NODE_MAJOR=18
+  
   echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
   sudo apt-get update
   sudo apt-get install nodejs -y
@@ -203,6 +241,7 @@ sudo pm2 save
 sudo pm2 list
 echo -e $YELLOW "Images are exposed as https://${DOMAIN_NAME}:88/." $NC
 echo -e $YELLOW "You need to make webclient uses these images as a map. Please checl WebClient help at https://cloud.ardupilot.org" $NC
+echo -e $YELLOW "for mode info check this video: https://youtu.be/ppwuUqomxXY" $NC
 popd
 read -p "Press any key to proceed " k
 
@@ -225,10 +264,6 @@ sudo pm2 delete droneengage_auth
 sudo pm2 start server.js  -n droneengage_auth
 sudo pm2 save
 popd
-
-
- fullchain.pem  privkey.pem 
-
 
 ###################################### DroneEngage-Server
 

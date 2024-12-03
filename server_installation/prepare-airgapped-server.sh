@@ -2,7 +2,7 @@
 
 ###Air Gapped Server on Raspberry PI
 
-SCRIPT_VERSION='2.0'
+SCRIPT_VERSION='2.1'
 
 DOMAIN_NAME='airgap.droneengage.com'
 IP='192.168.1.161'
@@ -18,7 +18,8 @@ NODE_MAJOR=18
 
 REPOSITORY_AUTH='https://github.com/DroneEngage/droneenage_authenticator.git'
 REPOSITORY_SERVER='https://github.com/DroneEngage/droneengage_server.git'
-REPOSITORY_WEBCLIENT='https://github.com/DroneEngage/droneengage_webclient.git'
+REPOSITORY_WEBCLIENT='https://github.com/DroneEngage/droneengage_webclient_react.git'
+# OLD WEBSITE REPOSITORY_WEBCLIENT='https://github.com/DroneEngage/droneengage_webclient.git'
 
 RED='\033[1;31m'
 GREEN='\033[1;32m'
@@ -65,6 +66,28 @@ while true; do
     echo -e $YELLOW  "IP address confirmation declined." $NC
   fi
 done
+
+
+###################################### DHCP
+# Backup the current dhcpcd.conf
+echo -e $GREEN "Setup STATIC IP" $NC
+sudo cp /etc/dhcpcd.conf /etc/dhcpcd.conf.bak
+$INTERFACE = 'wlan0'
+# Add static IP configuration to dhcpcd.conf
+{
+    echo ""
+    echo "# Static IP configuration"
+    echo "interface $INTERFACE"
+    echo "static ip_address=$IP/24"  # Adjust subnet mask if necessary
+    echo "static routers=192.168.1.1"  # Change to your router's IP
+    echo "static domain_name_servers=8.8.8.8 8.8.4.4"  # Google DNS
+} | sudo tee -a /etc/dhcpcd.conf
+
+# Restart the dhcpcd service to apply changes
+sudo systemctl restart dhcpcd
+
+echo -e $GREEN  "Static IP address $IP has been set for interface $INTERFACE." $NC
+
 ###################################### COTURN
 echo -e $GREEN "Install CoTurn" $NC
 sudo apt install -y coturn
@@ -223,8 +246,9 @@ sudo apt install -y git
 
 
 ###################################### NODE-HTTP-SERVER
-echo -e $GREEN "Install Http-Server" $NC
+echo -e $GREEN "Install Http-Server & Serve" $NC
 sudo npm install http-server -g -timeout=9999999
+sudo npm install serve -g -timeout=9999999
 
 
 ###################################### Local Maps
@@ -299,11 +323,15 @@ git clone -b release --single-branch ${REPOSITORY_WEBCLIENT} --depth 1 ./droneen
 echo -e $BLUE "installing nodejs modules" $NC
 pushd ~/droneengage_webclient
 npm install -timeout=9999999
+npm run build
+
+
 echo -e $BLUE "linking ssl folder" $NC
 ln -s ~/ssl ./ssl
 echo -e $BLUE "register as a service in pm2" $NC
 sudo pm2 delete webclient
-sudo pm2 start server.js  -n webclient
+SERVE_ROOT=$(npm root -g)
+sudo pm2 start $SERVE_ROOT/serve/build/main.js  -n webclient -- -s build -l 8881 --ssl-cert $HOME/ssl/fullchain.pem --ssl-key $HOME/ssl/privkey.pem
 sudo pm2 save
 popd
 

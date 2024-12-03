@@ -25,3 +25,11 @@ export LD_LIBRARY_PATH=/usr/local/openssl/lib:$LD_LIBRARY_PATH
 
 # Step 8: Update library cache
 sudo ldconfig -v | grep libcrypto
+
+# Step 9:
+sudo apt install libcurl4-openssl-dev
+
+# Step 10:
+sudo apt install libssl-dev
+
+

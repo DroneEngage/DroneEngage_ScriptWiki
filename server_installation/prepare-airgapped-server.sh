@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Air Gapped Server Setup Script for Raspberry Pi 4 (Raspbian Bullseye)
-# Version: 2.2
+# Version: 2.3
 # Description: This script automates the setup of an air-gapped server for DroneEngage.
 # Prerequisites: Raspberry Pi 4, Raspbian Bullseye, sudo privileges.
 # Author: Your Name
 # Repository: https://github.com/DroneEngage/DroneEngage_ScriptWiki
 
-SCRIPT_VERSION='2.2'
+SCRIPT_VERSION='2.3'
 
 DOMAIN_NAME='airgap.droneengage.com'
 IP='192.168.1.161'
@@ -25,7 +25,7 @@ NODE_MAJOR=18
 REPOSITORY_AUTH='https://github.com/DroneEngage/droneenage_authenticator.git'
 REPOSITORY_SERVER='https://github.com/DroneEngage/droneengage_server.git'
 REPOSITORY_WEBCLIENT='https://github.com/DroneEngage/droneengage_webclient_react.git'
-# OLD WEBSITE REPOSITORY_WEBCLIENT='https://github.com/DroneEngage/droneengage_webclient.git'
+
 
 RED='\033[1;31m'
 GREEN='\033[1;32m'
@@ -100,27 +100,6 @@ INTERFACE='wlan0'
 sudo systemctl restart dhcpcd
 
 echo -e $GREEN  "Static IP address $IP has been set for interface $INTERFACE." $NC
-
-###################################### COTURN
-echo -e $GREEN "Install CoTurn" $NC
-sudo apt install -y coturn
-
-echo -e $BLUE "Run CoTurn as a Service" $NC
-
-sudo touch /etc/turnserver.conf 
-sudo bash -c "cat > /etc/turnserver.conf  <<EOL
-listening-port=3478
-tls-listening-port=5349
-listening-ip=${MACHINE_IP}
-relay-ip=${MACHINE_IP}
-min-port=${MIN_WEBRTC_PORTS}
-max-port=${MAX_WEBRTC_PORTS}
-fingerprint
-lt-cred-mech
-server-name=${DOMAIN_NAME}
-user=${TURN_PWD}
-EOL
-"
 
 
 
@@ -197,12 +176,12 @@ read -p "Press any key to proceed " k
 
 
 ###################################### DNS 
-
 echo  "${IP}          ${DOMAIN_NAME}" | sudo tee -a  /etc/hosts
+echo  "127.0.0.1          ${DOMAIN_NAME}" | sudo tee -a  /etc/hosts
+
 
 echo -e $GREEN "Install DNS Server and register your domain" $NC
 sudo apt install -y dnsmasq
-
 echo -e $BLUE "Configure DNS" $NC
 sudo mv /etc/dnsmasq.conf  /etc/dnsmasq.conf.bak
 #sudo touch /etc/dnsmasq.conf 
@@ -222,6 +201,29 @@ echo -e $YELLOW "Set the DNS server address as the Raspberry Pi address ( ${IP} 
 
 
 read -p "Press any key to proceed " k
+
+
+
+###################################### COTURN
+echo -e $GREEN "Install CoTurn" $NC
+sudo apt install -y coturn
+
+echo -e $BLUE "Run CoTurn as a Service" $NC
+
+sudo touch /etc/turnserver.conf 
+sudo bash -c "cat > /etc/turnserver.conf  <<EOL
+listening-port=3478
+tls-listening-port=5349
+listening-ip=${MACHINE_IP}
+relay-ip=${MACHINE_IP}
+min-port=${MIN_WEBRTC_PORTS}
+max-port=${MAX_WEBRTC_PORTS}
+fingerprint
+lt-cred-mech
+server-name=${DOMAIN_NAME}
+user=${TURN_PWD}
+EOL
+"
 
 ###################################### NODEJS 
 if command -v node &>/dev/null; then
@@ -328,8 +330,6 @@ git clone -b release --single-branch ${REPOSITORY_WEBCLIENT} --depth 1 ./droneen
 
 echo -e $BLUE "installing nodejs modules" $NC
 pushd ~/droneengage_webclient
-npm install -timeout=9999999
-npm run build
 
 
 echo -e $BLUE "linking ssl folder" $NC
@@ -337,7 +337,7 @@ ln -s ~/ssl ./ssl
 echo -e $BLUE "register as a service in pm2" $NC
 sudo pm2 delete webclient
 SERVE_ROOT=$(npm root -g)
-sudo pm2 start $SERVE_ROOT/serve/build/main.js  -n webclient -- -s build -l 8881 --ssl-cert $HOME/ssl/fullchain.pem --ssl-key $HOME/ssl/privkey.pem
+sudo pm2 start $SERVE_ROOT/serve/build/main.js  -n webclient -- -s build -l 8001 --ssl-cert $HOME/ssl/fullchain.pem --ssl-key $HOME/ssl/privkey.pem
 sudo pm2 save
 popd
 

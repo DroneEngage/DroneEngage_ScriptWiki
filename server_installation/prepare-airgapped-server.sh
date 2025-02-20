@@ -1,13 +1,19 @@
 #!/bin/bash
 
-###Air Gapped Server on Raspberry PI
+# Air Gapped Server Setup Script for Raspberry Pi 4 (Raspbian Bullseye)
+# Version: 2.2
+# Description: This script automates the setup of an air-gapped server for DroneEngage.
+# Prerequisites: Raspberry Pi 4, Raspbian Bullseye, sudo privileges.
+# Author: Your Name
+# Repository: https://github.com/DroneEngage/DroneEngage_ScriptWiki
 
-SCRIPT_VERSION='2.1'
+SCRIPT_VERSION='2.2'
 
 DOMAIN_NAME='airgap.droneengage.com'
 IP='192.168.1.161'
 MACHINE_IP='192.168.1.161'
 EXTERNAL_IP='192.168.1.161'  ## same as MACHINE_IP if MACHINE_IP is real ip.
+ROUTER_ID='192.168.1.1'
 MIN_WEBRTC_PORTS=20000
 MAX_WEBRTC_PORTS=40000
 TURN_PWD='airgap:1234'
@@ -54,33 +60,40 @@ while true; do
 
   # Confirm the entered IP address
   read -p "You entered $ip_address. Is this correct? [y/n]: " confirm
-  
+
   # Check the user's confirmation
   if [[ $confirm =~ ^[Yy]$ ]]; then
     IP=$ip_address
     MACHINE_IP=$IP
     EXTERNAL_IP=$IP
-    echo -e $GREEN "IP address confirmed: $IP" $NC
+    echo -e $GREEN "IP address confirmed: " $YELLOW "$IP" $NC
+
+    # Generate ROUTER_ID
+    ROUTER_ID=$(echo "$IP" | cut -d '.' -f 1-3).1  # Extract first three octets and append .1
+    echo -e $GREEN "ROUTER IP generated: " $YELLOW "$ROUTER_ID" $NC
     break
   else
     echo -e $YELLOW  "IP address confirmation declined." $NC
   fi
 done
 
+# Now you can use the $ROUTER_ID variable
+echo "Using ROUTER IP: $ROUTER_ID"
+echo "Using IP: $IP"
 
 ###################################### DHCP
 # Backup the current dhcpcd.conf
 echo -e $GREEN "Setup STATIC IP" $NC
 sudo cp /etc/dhcpcd.conf /etc/dhcpcd.conf.bak
-$INTERFACE = 'wlan0'
+INTERFACE='wlan0'
 # Add static IP configuration to dhcpcd.conf
 {
     echo ""
     echo "# Static IP configuration"
-    echo "interface $INTERFACE"
-    echo "static ip_address=$IP/24"  # Adjust subnet mask if necessary
-    echo "static routers=192.168.1.1"  # Change to your router's IP
-    echo "static domain_name_servers=8.8.8.8 8.8.4.4"  # Google DNS
+    echo "interface $INTERFACE"  # Double quotes around $INTERFACE
+    echo "static ip_address=$IP/24"  # Double quotes around $IP
+    echo "static routers=$ROUTER_ID"  # Double quotes around $ROUTER_ID
+    echo "static domain_name_servers=8.8.8.8 8.8.4.4"
 } | sudo tee -a /etc/dhcpcd.conf
 
 # Restart the dhcpcd service to apply changes
@@ -185,7 +198,7 @@ read -p "Press any key to proceed " k
 
 ###################################### DNS 
 
-echo  "${IP}          {$DOMAIN_NAME}" | sudo tee -a  /etc/hosts
+echo  "${IP}          ${DOMAIN_NAME}" | sudo tee -a  /etc/hosts
 
 echo -e $GREEN "Install DNS Server and register your domain" $NC
 sudo apt install -y dnsmasq
@@ -211,8 +224,6 @@ echo -e $YELLOW "Set the DNS server address as the Raspberry Pi address ( ${IP} 
 read -p "Press any key to proceed " k
 
 ###################################### NODEJS 
-
-
 if command -v node &>/dev/null; then
   echo -e "${GREEN}Node.js is already installed. Skipping installation.${NC}"
 else
@@ -233,14 +244,12 @@ npm -v
 read -p "Press any key to proceed " k
 
 ###################################### PM2
- 
 echo -e $GREEN "Install PM2" $NC
 sudo npm install -g pm2  -timeout=9999999
 pm2 startup
 
 
 ###################################### GIT
-
 echo -e $GREEN "Install GIT" $NC
 sudo apt install -y git
 
@@ -252,7 +261,6 @@ sudo npm install serve -g -timeout=9999999
 
 
 ###################################### Local Maps
-
 echo -e $GREEN "Install Local Maps" $NC
 mkdir ~/map ~/map/cachedMap
 
@@ -272,7 +280,6 @@ read -p "Press any key to proceed " k
 
 
 ###################################### DroneEngage-Authenticator
-
 echo -e $GREEN "DroneEngage-Authenticator" $NC
 echo -e $BLUE "downloading release code" $NC
 cd ~
@@ -289,8 +296,9 @@ sudo pm2 start server.js  -n droneengage_auth
 sudo pm2 save
 popd
 
-###################################### DroneEngage-Server
 
+
+###################################### DroneEngage-Server
 echo -e $GREEN "DroneEngage-Server" $NC
 echo -e $BLUE "downloading release code" $NC
 cd ~
@@ -311,9 +319,7 @@ popd
 
 
 
-
 ###################################### DroneEngage-WebClient
-
 echo -e $GREEN "DroneEngage-Webclient" $NC
 echo -e $BLUE "downloading release code" $NC
 cd ~

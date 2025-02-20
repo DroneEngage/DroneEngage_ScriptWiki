@@ -7,7 +7,7 @@
 # Author: Your Name
 # Repository: https://github.com/DroneEngage/DroneEngage_ScriptWiki
 
-SCRIPT_VERSION='2.3'
+SCRIPT_VERSION='2.4'
 
 DOMAIN_NAME='airgap.droneengage.com'
 IP='192.168.1.161'
@@ -19,7 +19,7 @@ MAX_WEBRTC_PORTS=40000
 TURN_PWD='airgap:1234'
 
 ## NODEJS Version
-NODE_MAJOR=18
+NODE_MAJOR=22
 
 
 REPOSITORY_AUTH='https://github.com/DroneEngage/droneenage_authenticator.git'

@@ -246,10 +246,17 @@ npm -v
 read -p "Press any key to proceed " k
 
 ###################################### PM2
-echo -e $GREEN "Install PM2" $NC
-sudo npm install -g pm2  -timeout=9999999
-pm2 startup
-
+echo -e $BLUE "Check if PM2 installed" $NC
+if npm list -g pm2 &>/dev/null; then
+  echo -e $GREEN "pm2 is already installed. Skipping installation."
+else
+  # Install pm2 globally
+  echo -e $GREEN "Install PM2" $NC
+  sudo npm install -g pm2 -timeout=9999999
+  sudo pm2 startup
+  sudo pm2 save
+fi
+pm2 -v
 
 ###################################### GIT
 echo -e $GREEN "Install GIT" $NC
@@ -274,7 +281,7 @@ sudo pm2 start http-server  -n map_server -x  -- ~/map/cachedMap  -p 88 -C ~/ssl
 sudo pm2 save
 sudo pm2 list
 echo -e $YELLOW "Images are exposed as https://${DOMAIN_NAME}:88/." $NC
-echo -e $YELLOW "You need to make webclient uses these images as a map. Please checl WebClient help at https://cloud.ardupilot.org" $NC
+echo -e $YELLOW "You need to make webclient uses these images as a map. Please check WebClient help at https://cloud.ardupilot.org" $NC
 echo -e $YELLOW "for mode info check this video: https://youtu.be/ppwuUqomxXY" $NC
 popd
 read -p "Press any key to proceed " k
@@ -289,6 +296,9 @@ git clone -b release --single-branch ${REPOSITORY_AUTH} --depth 1 ./droneengage_
 
 pushd ~/droneengage_authenticator
 echo -e $BLUE "installing nodejs modules" $NC
+
+sudo apt install build-essential cmake libzmq3-dev pkg-config
+
 npm install -timeout=9999999 
 echo -e $BLUE "linking ssl folder" $NC
 ln -s ~/ssl ./ssl

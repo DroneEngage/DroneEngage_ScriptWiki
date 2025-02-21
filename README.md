@@ -23,7 +23,8 @@
 [prepare-airgapped-server_w_ap.sh](https://github.com/DroneEngage/DroneEngage_ScriptWiki/blob/main/server_installation/prepare-airgapped-server_w_ap.sh)
 
 You might need to connect LAN to your RPI-4 to maintain connection during installation.
-
+#### Ready-Image: 
+[here](https://cloud.ardupilot.org/downloads/RPI_Full_Images/airgap_server_rpi4/rpi-bulleye-standalone-airgap-server-_32G_21_feb_2025_large.img.xz)
 #### Purpose
 Install DroneEngage Server (DroneEngage Authenticator, DroneEngage Communication Server, WebClient)
 Use this script if you want to  create a server with AP.
@@ -52,12 +53,15 @@ The result will be a RPI Image with AP (access-point) of your choice and passwor
 
 you can edit password in **./home/pi/droneengage_authenticator/server.config**
 
-     
+  -------------------------------------------------------------------------------------------------------------------------------------------------
+  -------------------------------------------------------------------------------------------------------------------------------------------------
 
 ### Air Gap-Server without AP
 
 [prepare-airgapped-server.sh](https://github.com/DroneEngage/DroneEngage_ScriptWiki/blob/main/server_installation/prepare-airgapped-server.sh)
 
+#### Ready-Image: 
+[here](https://cloud.ardupilot.org/downloads/RPI_Full_Images/airgap_server_rpi4/rpi_4_sd_card_16G_airgap_server_image.img.xz)
 #### Purpose
 
 Install DroneEngage Server (DroneEngage Authenticator, DroneEngage Communication Server, WebClient)
@@ -76,4 +80,5 @@ Prepare a new **Raspberry Pi OS (Legacy) Lite (bullseye)** from [here](https://d
 
 You will need to edit hosts file on your computer to map **airgap.droneengage.com** to RPI-4 IP.
 
-    [https://youtu.be/R1BedRTxuuY](https://youtu.be/R1BedRTxuuY)
+[![help to run script](https://raw.githubusercontent.com/DroneEngage/DroneEngage_ScriptWiki/refs/heads/main/resources/youtube_IsolatedServerAndruavDroneEngage.png)](https://youtu.be/R1BedRTxuuY)
+``

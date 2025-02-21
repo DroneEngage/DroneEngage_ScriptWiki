@@ -27,6 +27,7 @@ You might need to connect LAN to your RPI-4 to maintain connection during instal
 [here](https://cloud.ardupilot.org/downloads/RPI_Full_Images/airgap_server_rpi4/rpi-bulleye-standalone-airgap-server-_32G_21_feb_2025_large.img.xz)
 
 AP:  DE_2025
+
 PWD: 1234567890
 
 #### Purpose

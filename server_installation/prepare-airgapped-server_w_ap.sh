@@ -7,7 +7,7 @@
 # Author: Your Name
 # Repository: https://github.com/DroneEngage/DroneEngage_ScriptWiki
 
-SCRIPT_VERSION='2.4'
+SCRIPT_VERSION='2.5'
 
 DOMAIN_NAME='airgap.droneengage.com'
 IP='192.168.1.161'
@@ -16,7 +16,7 @@ EXTERNAL_IP='192.168.1.161'  ## same as MACHINE_IP if MACHINE_IP is real ip.
 ROUTER_ID='192.168.1.1'
 MIN_WEBRTC_PORTS=20000
 MAX_WEBRTC_PORTS=40000
-TURN_PWD='airgap:1234'
+TURN_PWD='airgap:1234' ## check https://cloud.ardupilot.org/webclient-configuration.html
 
 ## NODEJS Version
 NODE_MAJOR=22
@@ -263,7 +263,16 @@ sudo pm2 start $SERVE_ROOT/serve/build/main.js  -n webclient -- -s build -l 8001
 sudo pm2 save
 popd
 
-#git pull origin release --rebase
+######################################## Create Access Point
+echo -e $GREEN "Create Access Point" $NC
+echo -e $YELLOW "This script will create an access point for your server." $NC
+
+echo -e $RED "Please run create_ap.sh to create access point" $NC
+read -p "Press any key to reboot now " k
+
+wget https://raw.githubusercontent.com/DroneEngage/DroneEngage_ScriptWiki/refs/heads/main/helper_scripts/create_ap.sh
+chmod +x create_ap.sh
+./create_ap.sh
 
 
-
+######################################## FINISH

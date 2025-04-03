@@ -12,11 +12,8 @@ MAX_WEBRTC_PORTS=40000
 TURN_PWD='airgap:1234'
 
 REPOSITORY_AUTH='https://github.com/DroneEngage/droneenage_authenticator.git'
-#REPOSITORY_AUTH=git@github.com:HefnySco/andruav_authenticator.git
 REPOSITORY_SERVER='https://github.com/DroneEngage/droneengage_server.git'
-#REPOSITORY_SEERVER='git@github.com:HefnySco/andruav_server.git'
-REPOSITORY_WEBCLIENT='https://github.com/DroneEngage/droneengage_webclient.git'
-#REPOSITORY_WEBCLIENT='git@github.com:HefnySco/andruav_webclient.git'
+REPOSITORY_WEBCLIENT='https://github.com/DroneEngage/droneengage_webclient_react.git'
 
 RED='\033[1;31m'
 GREEN='\033[1;32m'
@@ -247,12 +244,13 @@ git clone -b release --single-branch ${REPOSITORY_WEBCLIENT} --depth 1 ./de_webc
 
 echo -e $BLUE "installing nodejs modules" $NC
 pushd ~/de_webclient
-npm install -timeout=9999999
+
 echo -e $BLUE "linking ssl folder" $NC
 ln -s ~/ssl ./ssl
 echo -e $BLUE "register as a service in pm2" $NC
 sudo pm2 delete webclient
-sudo pm2 start server.js  -n de_webclient
+SERVE_ROOT=$(npm root -g)
+sudo pm2 start $SERVE_ROOT/serve/build/main.js  -n webclient -- -s build -l 8001 --ssl-cert $HOME/ssl/fullchain.pem --ssl-key $HOME/ssl/privkey.pem
 sudo pm2 save
 popd
 

@@ -70,6 +70,7 @@ pid_t startCameraPipeline(int cameraIndex, const std::string& postProcessFile) {
         // This is the child process. It replaces itself with the new program.
         // execlp(path, arg0, arg1, ..., NULL)
         // Here, we run "sh" with the "-c" flag to execute our complex command string.
+        std::cout << "Calling sh_run_virtual_camera.sh with command: " << cameraCmd  << std::endl; // Debugging output
         execlp("sh", "sh", "-c", cameraCmd.c_str(), (char *)NULL);
         
         // If execlp returns, an error has occurred.
@@ -169,7 +170,22 @@ void signal_handler(int signal_num) {
     exit(0);
 }
 
-int main() {
+int main(int argc, char* argv[]) { // Modified main function signature
+    // Check for correct number of arguments
+    if (argc < 2 || argc > 3) {
+        std::cerr << "Usage: " << argv[0] << " <camera_index> [postprocess_file_path]" << std::endl;
+        std::cerr << "Example: " << argv[0] << " 1" << std::endl;
+        std::cerr << "Example: " << argv[0] << " 1 \"/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json\"" << std::endl;
+        return 1;
+    }
+
+    // Parse command line arguments
+    int virtualCameraIndex = std::stoi(argv[1]);
+    std::string postProcessFilePath = ""; // Default to empty (no post-processing)
+    if (argc == 3) {
+        postProcessFilePath = argv[2];
+    }
+    
     // Register signal handlers. This ensures our `stopAllChildren()` function
     // is called when the program receives a SIGINT (e.g., Ctrl+C) or SIGTERM
     // (e.g., from `systemctl stop`).
@@ -188,11 +204,6 @@ int main() {
     }
     executeCommand("ls /sys/devices/virtual/video4linux/"); // For verification
 
-    // Define parameters for the camera pipeline
-    int virtualCameraIndex = 1; // Example: Stream to DE-CAM1
-    // Example: Path to a post-processing file. Leave empty "" for no post-processing.
-    std::string postProcessFilePath = "/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json";
-    
     // --- Step 3: Start rpicam-vid | ffmpeg ---
     std::cout << "Starting camera pipeline..." << std::endl;
     camera_pid = startCameraPipeline(virtualCameraIndex, postProcessFilePath);

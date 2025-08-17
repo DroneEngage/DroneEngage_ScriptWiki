@@ -1,8 +1,10 @@
 #!/bin/bash
 
 # Script: sh_run_virtual_camera.sh
-# Usage: sh_run_virtual_camera.sh <camera_index>
-# Example: sh_run_virtual_camera.sh 2  (to stream to the 2nd virtual camera)
+# Usage: sh_run_virtual_camera.sh <camera_index> [postprocess_file_path]
+# Example:
+#   sh_run_virtual_camera.sh 2                         (to stream to the 2nd virtual camera without post-processing)
+#   sh_run_virtual_camera.sh 2 "/path/to/my/model.json" (to stream to the 2nd virtual camera with a specific post-processing file)
 #
 # This script identifies the virtual camera by its card_label (DE-CAM1, DE-CAM2, etc.)
 # based on the provided index, and then starts a GStreamer pipeline to it.
@@ -24,23 +26,23 @@ VIDEO_HEIGHT=480
 VIDEO_FRAMERATE=30
 VIDEO_FORMAT="YUY2" # Common format for V4L2loopback
 
-# Set this to your post-processing file path, or leave empty if not needed.
-#POSTPROCESS_FILE="" # NO AI CAMERA
-POSTPROCESS_FILE="/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json"   # AI CAMERA INSTALLED
-
 
 # --- Script Logic ---
 
-# Check for exactly one argument
-if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 <camera_index>"
-    echo "Example: $0 1 (for DE-CAM1), $0 2 (for DE-CAM2)"
+# Check for correct number of arguments
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+    echo "Usage: $0 <camera_index> [postprocess_file_path]"
+    echo "Example: $0 1 (for DE-CAM1 without post-processing)"
+    echo "Example: $0 2 \"/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json\" (for DE-CAM2 with post-processing)"
     exit 1
 fi
 
 CAMERA_INDEX=$1
 TARGET_CAM_NAME="${CAM_LABEL_PREFIX}${CAMERA_INDEX}"
 TARGET_DEVICE=""
+
+# Assign POSTPROCESS_FILE from the second argument if provided, otherwise leave empty
+POSTPROCESS_FILE="${2:-}" # This sets POSTPROCESS_FILE to the second argument, or empty if not provided.
 
 echo "Searching for virtual camera: ${TARGET_CAM_NAME}"
 
@@ -77,33 +79,24 @@ fi
 
 echo "Found ${TARGET_CAM_NAME} at ${TARGET_DEVICE}. Starting GStreamer pipeline..."
 
-# Construct and execute the GStreamer command
-#GST_COMMAND="gst-launch-1.0 -v libcamerasrc ! \"video/x-raw,width=${VIDEO_WIDTH},height=${VIDEO_HEIGHT},framerate=${VIDEO_FRAMERATE}/1,format=${VIDEO_FORMAT}\" ! videoconvert ! v4l2sink device=${TARGET_DEVICE} "
-
 # Build the rpicam-vid command with or without the post-processing file
 RPICAM_VID_COMMAND="rpicam-vid -t 0 --vflip=1 --width ${VIDEO_WIDTH} --height ${VIDEO_HEIGHT} --framerate ${VIDEO_FRAMERATE} --codec yuv420 --info-text \"\""
 
 if [ -n "$POSTPROCESS_FILE" ]; then
     RPICAM_VID_COMMAND="${RPICAM_VID_COMMAND} --post-process-file ${POSTPROCESS_FILE}"
     echo "Using post-processing file: ${POSTPROCESS_FILE}"
+else
+    echo "No post-processing file specified."
 fi
 
 # Construct the full FFmpeg command
 FFMPG_COMMAND="${RPICAM_VID_COMMAND} -o -  | ffmpeg -f rawvideo -pixel_format yuv420p -video_size ${VIDEO_WIDTH}x${VIDEO_HEIGHT} -i - -f v4l2 -pixel_format yuv420p ${TARGET_DEVICE} -loglevel quiet"
 
-
 echo "Running command: ${GST_COMMAND}"
-# Execute the GStreamer command
-# Using 'eval' is necessary here because of the complex string with quotes
-# for the capsfilter. Be careful with 'eval' in general, but for this
-# well-defined GStreamer command, it's appropriate.
-#eval ${GST_COMMAND}
 echo "Executing command: $FFMPG_COMMAND"
 eval ${FFMPG_COMMAND}
 
 
-# Note: The GStreamer & FFMPEG command will run in the foreground until interrupted (Ctrl+C).
+# Note: The FFmpeg command will run in the foreground until interrupted (Ctrl+C).
 # If you want it to run in the background, you could add '&' at the end of the eval line,
 # but usually for a streaming task, you want to see its output and manage it.
-
-

@@ -15,7 +15,7 @@
 #include <vector>       // For using dynamic arrays (not used in this final version, but often useful)
 #include <sys/types.h>  // For pid_t data type
 #include <sys/wait.h>   // For waitpid() to monitor child processes
-#include <unistd.h>     // For fork(), execlp(), kill()
+#include <unistd.h>     // For fork(), execlp(), kill(), chdir()
 #include <csignal>      // For SIGTERM and SIGINT signal handling
 
 // Global PID variables to track the process IDs of our child processes.
@@ -47,11 +47,19 @@ bool executeCommand(const std::string& cmd) {
  * necessary to correctly handle the pipe (`|`) between the two programs.
  * The parent process returns the child's PID.
  *
+ * @param cameraIndex The index of the virtual camera to stream to (e.g., 1 for DE-CAM1).
+ * @param postProcessFile Optional path to a post-processing file for the camera.
  * @return The process ID (PID) of the child process, or -1 on failure.
  */
-pid_t startCameraPipeline() {
-    // The command string for the camera pipeline.
-    const std::string cameraCmd = "/home/pi/scripts/sh_camera_run_on_vc.sh 1";
+pid_t startCameraPipeline(int cameraIndex, const std::string& postProcessFile) {
+    // Construct the command string for the camera pipeline using the provided parameters.
+    std::string cameraCmd = "/home/pi/scripts/sh_camera_run_on_vc.sh " + std::to_string(cameraIndex);
+
+    // If a post-processing file is provided, append it to the command.
+    if (!postProcessFile.empty()) {
+        // Enclose the path in double quotes to handle spaces or special characters
+        cameraCmd += " \"" + postProcessFile + "\"";
+    }
 
     pid_t pid = fork();
     if (pid == -1) {
@@ -180,10 +188,14 @@ int main() {
     }
     executeCommand("ls /sys/devices/virtual/video4linux/"); // For verification
 
+    // Define parameters for the camera pipeline
+    int virtualCameraIndex = 1; // Example: Stream to DE-CAM1
+    // Example: Path to a post-processing file. Leave empty "" for no post-processing.
+    std::string postProcessFilePath = "/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json";
     
     // --- Step 3: Start rpicam-vid | ffmpeg ---
     std::cout << "Starting camera pipeline..." << std::endl;
-    camera_pid = startCameraPipeline();
+    camera_pid = startCameraPipeline(virtualCameraIndex, postProcessFilePath);
     if (camera_pid == -1) {
         std::cerr << "CRITICAL: Failed to start camera pipeline. Exiting." << std::endl;
         stopAllChildren(); // Clean up any children if necessary

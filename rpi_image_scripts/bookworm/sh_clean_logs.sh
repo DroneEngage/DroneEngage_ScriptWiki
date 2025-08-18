@@ -9,22 +9,26 @@ sudo journalctl --vacuum-time=0days
 sudo journalctl --rotate # Rotate logs immediately to apply vacuum
 echo "System journal logs cleared."
 
-# 2. Clear common application logs (customize as needed)
-echo "2. Clearing common application logs (older than 2 days for .log, 7 days for .gz/bz2/xz/zip)..."
-# Clear .log files older than 2 days
-sudo find /var/log -type f -name "*.log" -mtime +2 -delete
-# Clear compressed logs older than 7 days
-sudo find /var/log -type f -name "*.gz" -mtime +7 -delete
-sudo find /var/log -type f -name "*.bz2" -mtime +7 -delete
-sudo find /var/log -type f -name "*.xz" -mtime +7 -delete
-sudo find /var/log -type f -name "*.zip" -mtime +7 -delete
-# Truncate current system logs (optional, if you want to keep the files but clear content)
-echo "Truncating active logs (e.g., syslog, auth.log)..."
-sudo truncate -s 0 /var/log/syslog
-sudo truncate -s 0 /var/log/auth.log
-sudo truncate -s 0 /var/log/kern.log
-# Add more /var/log files to truncate if you know they're constantly written to
-echo "Common application logs cleared."
+# 2. Clear common application logs (including rotated ones)
+echo "2. Clearing all application logs..."
+
+# Truncate active log files to keep the files in place but empty their contents.
+echo "  - Truncating active log files..."
+sudo find /var/log -type f -name "*.log" -exec truncate -s 0 {} \;
+
+# Delete all compressed, rotated log files.
+echo "  - Deleting rotated and compressed log files..."
+sudo find /var/log/ -type f -name "*.gz" -delete
+sudo find /var/log/ -type f -name "*.bz2" -delete
+sudo find /var/log/ -type f -name "*.xz" -delete
+sudo find /var/log/ -type f -name "*.zip" -delete
+
+# The above commands are enough to get most logs. However, if you want to
+# be more aggressive, you can also delete the historical, uncompressed logs.
+echo "  - Deleting historical, uncompressed logs (e.g., .log.1, .log.2)..."
+sudo find /var/log/ -type f -regex ".*\.log\.[0-9]+" -delete
+
+echo "All logs cleared."
 
 # 3. Clear command history for all users (if multiple exist)
 echo "3. Clearing command history for existing users..."

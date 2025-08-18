@@ -21,6 +21,7 @@
 // Global PID variables to track the process IDs of our child processes.
 // Initialized to -1 to indicate that no process is currently running.
 pid_t camera_pid = -1;
+pid_t tracking_camera_pid = -1;
 pid_t de_camera_pid = -1;
 
 /**
@@ -83,14 +84,10 @@ pid_t startCameraPipeline(int cameraIndex, const std::string& postProcessFile) {
 }
 
 
-/**
- * @brief Forks a new process to start the de_camera64.so executable.
- * @return The process ID (PID) of the child process, or -1 on failure.
- */
-pid_t startDeCamera() {
+pid_t startTrackingCamera() {
     // Path to the de_camera executable and its configuration file.
-    const std::string deCameraPath = "/home/pi/drone_engage/de_camera/de_camera64.so";
-    const std::string deCameraConfig = "/home/pi/drone_engage/de_camera/de_camera.config.module.json";
+    const std::string deModulePath = "/home/pi/drone_engage/de_tracking/de_tracker.so";
+    const std::string deModuleConfig = "/home/pi/drone_engage/de_camera/de_tracker.config.module.json";
     
     pid_t pid = fork();
     if (pid == -1) {
@@ -108,14 +105,50 @@ pid_t startDeCamera() {
         // This is the child process.
         // execlp(path, arg0, arg1, arg2, ..., NULL)
         // arg0 is conventionally the program's name.
-        execlp(deCameraPath.c_str(), "de_camera64.so", "-c", deCameraConfig.c_str(), (char *)NULL);
+        execlp(deModulePath.c_str(), "de_camera64.so", "-c", deModuleConfig.c_str(), (char *)NULL);
         
         // If execlp returns, an error has occurred.
         perror("execlp for de_camera64.so failed");
         _exit(127); // Exit the child process with a non-zero status.
     }
     // This is the parent process.
-    std::cout << "de_camera64.so started with PID: " << pid << std::endl;
+    std::cout << deModulePath << " started with PID: " << pid << std::endl;
+    return pid;
+}
+
+/**
+ * @brief Forks a new process to start the de_camera64.so executable.
+ * @return The process ID (PID) of the child process, or -1 on failure.
+ */
+pid_t startDeCamera() {
+    // Path to the de_camera executable and its configuration file.
+    const std::string deModulePath = "/home/pi/drone_engage/de_camera/de_camera64.so";
+    const std::string deModuleConfig = "/home/pi/drone_engage/de_camera/de_camera.config.module.json";
+    
+    pid_t pid = fork();
+    if (pid == -1) {
+        // Forking failed.
+        std::cerr << "Failed to fork for de_camera64.so." << std::endl;
+        return -1;
+    } else if (pid == 0) {
+
+        // Change the current working directory for the child process
+        if (chdir("/home/pi/drone_engage/de_camera/") == -1) {
+            perror("chdir for de_camera64.so failed");
+            _exit(1); // Exit if we can't change directory
+        }
+
+        // This is the child process.
+        // execlp(path, arg0, arg1, arg2, ..., NULL)
+        // arg0 is conventionally the program's name.
+        execlp(deModulePath.c_str(), "de_camera64.so", "-c", deModuleConfig.c_str(), (char *)NULL);
+        
+        // If execlp returns, an error has occurred.
+        perror("execlp for de_camera64.so failed");
+        _exit(127); // Exit the child process with a non-zero status.
+    }
+    // This is the parent process.
+    std::cout << deModulePath << " started with PID: " << pid << std::endl;
     return pid;
 }
 
@@ -130,6 +163,11 @@ void stopAllChildren() {
     if (camera_pid > 0) {
         std::cout << "Stopping camera pipeline (PID " << camera_pid << ")..." << std::endl;
         kill(camera_pid, SIGTERM);
+        // We do not call waitpid here to avoid blocking on the child's cleanup.
+    }
+    if (tracking_camera_pid > 0) {
+        std::cout << "Stopping tracking camera pipeline (PID " << tracking_camera_pid << ")..." << std::endl;
+        kill(tracking_camera_pid, SIGTERM);
         // We do not call waitpid here to avoid blocking on the child's cleanup.
     }
     if (de_camera_pid > 0) {
@@ -150,6 +188,7 @@ void preemptiveKill() {
     std::cout << "Pre-emptively killing any old 'rpicam-vid' and 'de_camera64.so' processes..." << std::endl;
     // The -9 flag sends SIGKILL, which cannot be ignored by the process.
     executeCommand("sudo pkill -9 rpicam-vid");
+    executeCommand("sudo pkill -9 de_tracking.so");
     executeCommand("sudo pkill -9 de_camera64.so");
     // Wait a moment for the system to clean up the terminated processes.
     std::this_thread::sleep_for(std::chrono::seconds(2));
@@ -213,8 +252,21 @@ int main(int argc, char* argv[]) { // Modified main function signature
         return 1;
     }
 
-    // --- Step 4: Wait 10 seconds and then start de_camera64.so ---
-    std::this_thread::sleep_for(std::chrono::seconds(20));
+
+    
+
+    // --- Step 4: Wait 5 seconds and then start de_camera64.so ---
+    std::this_thread::sleep_for(std::chrono::seconds(15));
+    std::cout << "Starting de_camera64.so..." << std::endl;
+    tracking_camera_pid = startTrackingCamera();
+    if (tracking_camera_pid == -1) {
+        std::cerr << "CRITICAL: Failed to start de_tracker.so. Exiting." << std::endl;
+        stopAllChildren(); // Clean up the camera pipeline before exiting
+        return 1;
+    }
+
+    // --- Step 5: Wait 5 seconds and then start de_camera64.so ---
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     std::cout << "Starting de_camera64.so..." << std::endl;
     de_camera_pid = startDeCamera();
     if (de_camera_pid == -1) {

@@ -22,17 +22,22 @@
 // Initialized to -1 to indicate that no process is currently running.
 pid_t camera_pid = -1;
 pid_t tracking_camera_pid = -1;
+pid_t ai_tracking_camera_pid = -1;
 pid_t de_camera_pid = -1;
+
 
 // Base directories for drone_engage modules
 const std::string BASE_CAMERA_MODULE_PATH = "/home/pi/drone_engage/de_camera/";
 const std::string BASE_TRACKER_MODULE_PATH = "/home/pi/drone_engage/de_tracking/";
+const std::string BASE_AI_TRACKER_MODULE_PATH = "/home/pi/drone_engage/de_ai_tracker/";
 
 // Module-specific paths
 const std::string DE_CAMERA_MODULE = BASE_CAMERA_MODULE_PATH + "de_camera64.so";
 const std::string DE_CAMERA_CONFIG = BASE_CAMERA_MODULE_PATH + "de_camera.config.module.json";
 const std::string TRACKING_MODULE = BASE_TRACKER_MODULE_PATH + "de_tracker.so";
 const std::string TRACKING_CONFIG = BASE_TRACKER_MODULE_PATH + "de_tracker.config.module.json";
+const std::string AI_TRACKING_MODULE = BASE_AI_TRACKER_MODULE_PATH + "de_ai_tracker.so";
+const std::string AI_TRACKING_CONFIG = BASE_AI_TRACKER_MODULE_PATH + "de_ai_tracker.config.module.json";
 
 /**
  * @brief Executes a shell command and checks its exit code.
@@ -126,6 +131,10 @@ void stopAllChildren() {
         std::cout << "Stopping tracking module (PID " << tracking_camera_pid << ")..." << std::endl;
         kill(tracking_camera_pid, SIGTERM);
     }
+    if (ai_tracking_camera_pid > 0) {
+        std::cout << "Stopping ai tracking module (PID " << ai_tracking_camera_pid << ")..." << std::endl;
+        kill(ai_tracking_camera_pid, SIGTERM);
+    }
     if (de_camera_pid > 0) {
         std::cout << "Stopping de_camera module (PID " << de_camera_pid << ")..." << std::endl;
         kill(de_camera_pid, SIGTERM);
@@ -142,6 +151,7 @@ void preemptiveKill() {
     std::cout << "Pre-emptively killing any old 'rpicam-vid', 'de_tracker.so', and 'de_camera64.so' processes..." << std::endl;
     executeCommand("sudo pkill -9 rpicam-vid");
     executeCommand("sudo pkill -9 de_tracker.so");
+    executeCommand("sudo pkill -9 de_ai_tracker.so");
     executeCommand("sudo pkill -9 de_camera64.so");
     std::this_thread::sleep_for(std::chrono::seconds(2));
 }
@@ -200,7 +210,17 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Step 5: Start de_camera module after 5 seconds
+    // Step 5: Start tracking module after 5 seconds
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    std::cout << "Starting de_ai_tracker.so..." << std::endl;
+    ai_tracking_camera_pid = startModule(AI_TRACKING_MODULE, AI_TRACKING_CONFIG, "de_ai_tracker.so", BASE_AI_TRACKER_MODULE_PATH);
+    if (ai_tracking_camera_pid == -1) {
+        std::cerr << "CRITICAL: Failed to start de_ai_tracker.so. Exiting." << std::endl;
+        stopAllChildren();
+        return 1;
+    }
+
+    // Step 6: Start de_camera module after 5 seconds
     std::this_thread::sleep_for(std::chrono::seconds(5));
     std::cout << "Starting de_camera64.so..." << std::endl;
     de_camera_pid = startModule(DE_CAMERA_MODULE, DE_CAMERA_CONFIG, "de_camera64.so", BASE_CAMERA_MODULE_PATH);

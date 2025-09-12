@@ -20,10 +20,13 @@
 # The script will look for "DE-CAM1", "DE-CAM2", etc.
 CAM_LABEL_PREFIX="DE-CAM"
 
+RPICAM_VID="/home/pi/rpicam-apps/build/apps/rpicam-vid"
+
 # GStreamer pipeline parameters
 VIDEO_WIDTH=640
 VIDEO_HEIGHT=480
-VIDEO_FRAMERATE=30
+# VIDEO_FRAMERATE=30 ... RPI-4
+VIDEO_FRAMERATE=20
 VIDEO_FORMAT="YUY2" # Common format for V4L2loopback
 
 
@@ -80,7 +83,7 @@ fi
 echo "Found ${TARGET_CAM_NAME} at ${TARGET_DEVICE}. Starting GStreamer pipeline..."
 
 # Build the rpicam-vid command with or without the post-processing file
-RPICAM_VID_COMMAND="rpicam-vid -t 0 --vflip=1 --width ${VIDEO_WIDTH} --height ${VIDEO_HEIGHT} --framerate ${VIDEO_FRAMERATE} --codec yuv420 --info-text \"\""
+RPICAM_VID_COMMAND="${RPICAM_VID} -t 0 --vflip=1 --width ${VIDEO_WIDTH} --height ${VIDEO_HEIGHT} --framerate ${VIDEO_FRAMERATE} --codec yuv420 --info-text \"\""
 
 if [ -n "$POSTPROCESS_FILE" ]; then
     RPICAM_VID_COMMAND="${RPICAM_VID_COMMAND} --post-process-file ${POSTPROCESS_FILE}"

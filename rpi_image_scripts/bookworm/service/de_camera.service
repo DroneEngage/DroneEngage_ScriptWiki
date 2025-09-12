@@ -1,13 +1,20 @@
 [Unit]
-Description=Drone Engage Camera with Initialization of rpicamera-vid pipeline Ver 2.0
-After=systemd-modules-load.service
+Description=Drone Engage Camera withOUT RPI-Camera Ver 2.0
+After=network.target multi-user.target
 Documentation=https://droneengage.com
 
 
 [Service]
 Type=simple
-ExecStart=/home/pi/scripts/wrapper/camera_manager_wrapper
+WorkingDirectory=/home/pi/drone_engage/de_camera
+ExecStart=/home/pi/drone_engage/de_camera/de_camera64.so -c /home/pi/drone_engage/de_camera/de_camera.config.module.json
 Restart=on-failure
+RestartSec=5s # Wait 5 seconds before attempting a restart
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=camera_wrapper
+
 # You might need to adjust user/group if camera access is restricted
 # User=pi
 # Group=video

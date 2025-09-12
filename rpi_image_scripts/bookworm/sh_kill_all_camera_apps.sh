@@ -17,3 +17,5 @@ sudo pkill --signal 9 -f de_tracker.so
 sudo pkill --signal 9 -f de_ai_tracker.so
 sudo pkill --signal 9 -f de_camera64.so
 
+# fix screen
+stty sane

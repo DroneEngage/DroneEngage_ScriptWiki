@@ -1,0 +1,17 @@
+[Unit]
+ Description=DE Mavlink Service Ver 1.0
+ After=network.target
+ Documentation=https://droneengage.com
+ 
+
+
+ [Service]
+ Type=single
+ WorkingDirectory=/home/pi/drone_engage/de_mavlink
+ ExecStart=/home/pi/drone_engage/de_mavlink/de_ardupilot  -c /home/pi/drone_engage/de_mavlink/de_mavlink.config.module.json
+ Restart=on-failure
+ TimeoutStopSec=5
+
+ [Install]
+ WantedBy=multi-user.target
+

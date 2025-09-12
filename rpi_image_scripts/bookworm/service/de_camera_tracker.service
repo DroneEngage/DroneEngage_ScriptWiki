@@ -1,0 +1,24 @@
+[Unit]
+Description=Drone Engage Camera withOUT RPI-Camera Ver 2.0
+After=network.target multi-user.target
+Documentation=https://droneengage.com
+
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/scripts/wrapper
+ExecStart=/home/pi/scripts/wrapper/camera_manager_wrapper --enable-tracker 1
+Restart=on-failure
+RestartSec=5s # Wait 5 seconds before attempting a restart
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=camera_wrapper
+
+# You might need to adjust user/group if camera access is restricted
+# User=pi
+# Group=video
+
+[Install]
+WantedBy=multi-user.target
+

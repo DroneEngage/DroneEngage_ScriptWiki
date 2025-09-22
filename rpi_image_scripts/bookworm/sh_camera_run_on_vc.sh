@@ -15,6 +15,15 @@
 # - GStreamer and libcamera plugins installed (gstreamer1.0-tools gstreamer1.0-libcamera etc.)
 
 
+
+# Color definitions for terminal output
+RED='\033[1;31m'
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[1;34m'
+NC='\033[0m' # No Color
+
+
 # --- Configuration ---
 # Define the base name for your virtual cameras.
 # The script will look for "DE-CAM1", "DE-CAM2", etc.
@@ -34,9 +43,9 @@ VIDEO_FORMAT="YUY2" # Common format for V4L2loopback
 
 # Check for correct number of arguments
 if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-    echo "Usage: $0 <camera_index> [postprocess_file_path]"
-    echo "Example: $0 1 (for DE-CAM1 without post-processing)"
-    echo "Example: $0 2 \"/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json\" (for DE-CAM2 with post-processing)"
+    echo -e "${YELLOW}Usage: $0 <camera_index> [postprocess_file_path]${NC}"
+    echo -e "${YELLOW}Example: $0 1 (for DE-CAM1 without post-processing)${NC}"
+    echo -e "${YELLOW}Example: $0 2 \"/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json\" (for DE-CAM2 with post-processing)${NC}"
     exit 1
 fi
 
@@ -47,7 +56,7 @@ TARGET_DEVICE=""
 # Assign POSTPROCESS_FILE from the second argument if provided, otherwise leave empty
 POSTPROCESS_FILE="${2:-}" # This sets POSTPROCESS_FILE to the second argument, or empty if not provided.
 
-echo "Searching for virtual camera: ${TARGET_CAM_NAME}"
+echo -e "${YELLOW}Searching for virtual camera: ${TARGET_CAM_NAME}${NC}"
 
 # Iterate through all video4linux devices in sysfs
 # This is more reliable than direct /dev/videoX guesses
@@ -75,28 +84,28 @@ for video_dir in /sys/devices/virtual/video4linux/video*; do
 done
 
 if [ -z "$TARGET_DEVICE" ]; then
-    echo "Error: Virtual camera '${TARGET_CAM_NAME}' not found."
-    echo "Please ensure 'v4l2loopback' is loaded with this card_label."
+    echo -e "${RED}Error: Virtual camera '${TARGET_CAM_NAME}' not found.${NC}"
+    echo -e "${YELLOW}Please ensure 'v4l2loopback' is loaded with this card_label.${NC}"
     exit 1
 fi
 
-echo "Found ${TARGET_CAM_NAME} at ${TARGET_DEVICE}. Starting GStreamer pipeline..."
+echo -e "${GREEN}Found ${TARGET_CAM_NAME} at ${TARGET_DEVICE}. Starting GStreamer pipeline...${NC}"
 
 # Build the rpicam-vid command with or without the post-processing file
 RPICAM_VID_COMMAND="${RPICAM_VID} -t 0 --vflip=1 --width ${VIDEO_WIDTH} --height ${VIDEO_HEIGHT} --framerate ${VIDEO_FRAMERATE} --codec yuv420 --info-text \"\""
 
 if [ -n "$POSTPROCESS_FILE" ]; then
     RPICAM_VID_COMMAND="${RPICAM_VID_COMMAND} --post-process-file ${POSTPROCESS_FILE}"
-    echo "Using post-processing file: ${POSTPROCESS_FILE}"
+    echo -e "${GREEN}Using post-processing file: ${POSTPROCESS_FILE}${NC}"
 else
-    echo "No post-processing file specified."
+    echo -e "${YELLOW}No post-processing file specified.${NC}"
 fi
 
 # Construct the full FFmpeg command
 FFMPG_COMMAND="${RPICAM_VID_COMMAND} -o -  | ffmpeg -f rawvideo -pixel_format yuv420p -video_size ${VIDEO_WIDTH}x${VIDEO_HEIGHT} -i - -f v4l2 -pixel_format yuv420p ${TARGET_DEVICE} -loglevel quiet"
 
-echo "Running command: ${GST_COMMAND}"
-echo "Executing command: $FFMPG_COMMAND"
+echo "Running command (GST_COMMAND): ${GST_COMMAND}"
+echo  -e "${BLUE}Executing command: ${YELLOW}$FFMPG_COMMAND${NC}"
 eval ${FFMPG_COMMAND}
 
 

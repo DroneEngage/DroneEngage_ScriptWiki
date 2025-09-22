@@ -58,7 +58,7 @@ bool executeCommand(const std::string &cmd)
  * @brief Forks a new process to start the rpicam-vid | ffmpeg pipeline.
  * @param cameraIndex The index of the virtual camera to stream to.
  * @param postProcessFile Optional path to a post-processing file.
- * @return The process ID (PID) of the child process, or -1 on failure.
+ * @return The process ID (PID) of the child process, -1 on failure, or 0 if no RPI camera is detected.
  */
 pid_t startCameraPipeline(int cameraIndex, const std::string &postProcessFile)
 {
@@ -81,6 +81,43 @@ pid_t startCameraPipeline(int cameraIndex, const std::string &postProcessFile)
         perror("execlp for camera pipeline failed");
         _exit(127);
     }
+
+   // Give the script a short time to perform camera detection
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    // Check if the child process has exited (non-blocking)
+    int status;
+    pid_t result = waitpid(pid, &status, WNOHANG);
+    if (result == -1)
+    {
+        std::cerr << "Failed to check camera pipeline process status." << std::endl;
+        return -1;
+    }
+    else if (result == pid)
+    {
+        // Child process exited
+        if (WIFEXITED(status))
+        {
+            int exit_code = WEXITSTATUS(status);
+            if (exit_code == 2)
+            {
+                std::cout << "No Raspberry Pi camera detected. Skipping camera pipeline." << std::endl;
+                return 0; // Indicate no RPI camera, but not a failure
+            }
+            else if (exit_code != 0)
+            {
+                std::cerr << "Camera pipeline failed with exit code " << exit_code << "." << std::endl;
+                return -1;
+            }
+        }
+        else
+        {
+            std::cerr << "Camera pipeline terminated abnormally." << std::endl;
+            return -1;
+        }
+    }
+
+    // Child process is still running (successful pipeline start)
     std::cout << "Camera pipeline started with PID: " << pid << std::endl;
     return pid;
 }
@@ -196,6 +233,7 @@ int main(int argc, char *argv[])
             enable_ai_tracker = true;
             break;
         case 'd':
+            // dont run camera module.
             enable_de_camera = false;
             break;
         default:
@@ -244,6 +282,11 @@ int main(int argc, char *argv[])
             stopAllChildren();
             return 1;
         }
+        else if (camera_pid == 0)
+        {
+            std::cout << "No RPI camera detected, but continuing with other modules if enabled." << std::endl;
+            camera_pid = -1; // Reset camera_pid to avoid stopping a non-existent process
+        }
     }
     else
     {
@@ -290,6 +333,10 @@ int main(int argc, char *argv[])
             stopAllChildren();
             return 1;
         }
+    }
+    else
+    {
+        std::cout << "SKIPING de_camera64.so..." << std::endl;
     }
 
     // Main monitoring loop: Wait for any child process to crash

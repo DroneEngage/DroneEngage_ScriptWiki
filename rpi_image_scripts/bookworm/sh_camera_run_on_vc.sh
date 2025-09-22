@@ -30,6 +30,7 @@ NC='\033[0m' # No Color
 CAM_LABEL_PREFIX="DE-CAM"
 
 RPICAM_VID="/home/pi/rpicam-apps/build/apps/rpicam-vid"
+RPICAM_HELLO="/home/pi/rpicam-apps/build/apps/rpicam-hello"
 
 # GStreamer pipeline parameters
 VIDEO_WIDTH=640
@@ -48,6 +49,15 @@ if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
     echo -e "${YELLOW}Example: $0 2 \"/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json\" (for DE-CAM2 with post-processing)${NC}"
     exit 1
 fi
+
+
+# Check for RPI camera availability using libcamera-hello
+echo -e "${YELLOW}Checking for Raspberry Pi camera...${NC}"
+if ! ${RPICAM_HELLO} --list-cameras | grep -qi "available cameras"; then
+    echo -e "${RED}No Raspberry Pi camera detected. Skipping camera pipeline.${NC}"
+    exit 2 # Exit with status 2 to indicate no RPI camera
+fi
+echo -e "${GREEN}Raspberry Pi camera detected. Proceeding with pipeline setup...${NC}"
 
 CAMERA_INDEX=$1
 TARGET_CAM_NAME="${CAM_LABEL_PREFIX}${CAMERA_INDEX}"

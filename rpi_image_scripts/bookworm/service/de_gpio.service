@@ -1,0 +1,15 @@
+[Unit]
+ Description=DE RPI GPIO Service Ver 1.0
+ After=systemd-modules-load.service
+ Documentation=https://droneengage.com  
+
+
+[Service]
+ Type=single
+ WorkingDirectory=/home/pi/drone_engage/de_gpio
+ ExecStart=/home/pi/drone_engage/de_gpio/de_rpi_gpio  -c /home/pi/drone_engage/de_gpio/de_rpi_gpio.config.module.json
+ Restart=on-failure
+ TimeoutStopSec=5 #specifies the time to wait for the service to stop gracefully
+ RestartSec=5 
+[Install]
+ WantedBy=multi-user.target

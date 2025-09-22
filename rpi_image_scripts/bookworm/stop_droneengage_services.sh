@@ -27,13 +27,6 @@ else
   echo -e "${RED}Failed to stop de_mavlink.service.${NC}"
 fi
 
-# Stop de_camera.service
-echo -e "${BLUE}Stopping de_camera.service...${NC}"
-if sudo systemctl stop de_camera.service; then
-  echo -e "${GREEN}de_camera.service stopped successfully.${NC}"
-else
-  echo -e "${RED}Failed to stop de_camera.service.${NC}"
-fi
 
 echo -e "${GREEN}All Drone Engine services stopped.${NC}"
 
@@ -41,7 +34,6 @@ echo -e "${GREEN}All Drone Engine services stopped.${NC}"
 echo -e "${YELLOW}This script stops the following services:${NC}"
 echo -e "${BLUE} - de_communicator.service${NC}"
 echo -e "${BLUE} - de_mavlink.service${NC}"
-echo -e "${BLUE} - de_camera.service${NC}"
 echo -e "${YELLOW}These services are related to the Drone Engine system.${NC}"
 echo -e "${YELLOW}You will be prompted for your sudo password to execute these commands.${NC}"
 echo -e "${YELLOW}Please ensure you have the necessary permissions to stop these services.${NC}"

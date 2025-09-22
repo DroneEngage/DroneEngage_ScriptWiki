@@ -27,13 +27,6 @@ else
   echo -e "${RED}Failed to enable and start de_mavlink.service.${NC}"
 fi
 
-# Enable and start de_camera.service
-echo -e "${BLUE}Enabling and starting de_camera.service...${NC}"
-if sudo systemctl unmask de_camera.service && sudo systemctl enable de_camera.service && sudo systemctl start de_camera.service; then
-  echo -e "${GREEN}de_camera.service enabled and started successfully.${NC}"
-else
-  echo -e "${RED}Failed to enable and start de_camera.service.${NC}"
-fi
 
 echo -e "${GREEN}All Drone Engine services enabled and started.${NC}"
 
@@ -41,7 +34,6 @@ echo -e "${GREEN}All Drone Engine services enabled and started.${NC}"
 echo -e "${YELLOW}This script enables and starts the following services:${NC}"
 echo -e "${BLUE} - de_communicator.service${NC}"
 echo -e "${BLUE} - de_mavlink.service${NC}"
-echo -e "${BLUE} - de_camera.service${NC}"
 echo -e "${YELLOW}These services are related to the Drone Engine system.${NC}"
 echo -e "${YELLOW}You will be prompted for your sudo password to execute these commands.${NC}"
 echo -e "${YELLOW}Please ensure you have the necessary permissions to enable and start these services.${NC}"

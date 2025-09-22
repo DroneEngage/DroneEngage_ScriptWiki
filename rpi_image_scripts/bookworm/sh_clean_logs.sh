@@ -139,6 +139,9 @@ echo "Crontabs cleared. Review /etc/cron.* for persistent system cron jobs."
 # echo "Removing specific application traces..."
 # sudo rm -rf /opt/your_custom_app
 # sudo rm -f /etc/your_custom_app.conf
+# 11.a delete bak files of config.
+sudo find /home/pi -type f -name "*.bak.*" -delete
+sudo find /home/pi -type d -name "terrain" -exec rm -rf {} +
 
 # 12. Final check of disk space
 echo "--- Disk space after cleanup ---"

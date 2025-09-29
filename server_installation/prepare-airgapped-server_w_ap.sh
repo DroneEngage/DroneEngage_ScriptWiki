@@ -7,13 +7,15 @@
 # Author: Your Name
 # Repository: https://github.com/DroneEngage/DroneEngage_ScriptWiki
 
-SCRIPT_VERSION='2.5'
+SCRIPT_VERSION='3.0'
 
-DOMAIN_NAME='airgap.droneengage.com'
-IP='192.168.1.161'
-MACHINE_IP='192.168.1.161'
-EXTERNAL_IP='192.168.1.161'  ## same as MACHINE_IP if MACHINE_IP is real ip.
-ROUTER_ID='192.168.1.1'
+ACTIVATE_AP=FALSE
+AP_SSID='DE_SERVER'
+AP_PWD='droneengage'
+AP_IP='192.169.9.1/24'
+
+#Actual Domain Name will have .local - DO NOT WRITE .local in the name it will be added automatically.
+DOMAIN_NAME='airgap' 
 MIN_WEBRTC_PORTS=20000
 MAX_WEBRTC_PORTS=40000
 TURN_PWD='airgap:1234' ## check https://cloud.ardupilot.org/webclient-configuration.html
@@ -45,73 +47,34 @@ read -p "Press any key to proceed " k
 sudo apt update
 
 ###################################### SSL 
-mkdir -p ~/ssl
+## Rename Host
+# 1. Set the static hostname (updates /etc/hostname)
+sudo hostnamectl set-hostname "$DOMAIN_NAME"
+# 2. Update /etc/hosts (manual fix for resolution)
+echo -e $GREEN "Updating /etc/hosts to include $DOMAIN_NAME..." $NC
+# Use sed to replace the existing 127.0.0.1 line to ensure it includes the new hostname.
+# This assumes the original line looks like "127.0.0.1  localhost" or "127.0.0.1  oldname"
+# The -i flag edits the file in place.
+sudo sed -i "s/^127.0.0.1\s\+.*$/127.0.0.1\tlocalhost\t$DOMAIN_NAME/" /etc/hosts
+echo -e $GREEN "Hostname updated and local resolution configured." $NC
 
+## Generate SSL
+https://raw.githubusercontent.com/DroneEngage/DroneEngage_ScriptWiki/refs/heads/main/helper_scripts/create_domain_name.sh
+chmod +x create_domain_name.sh
+./create_domain_name.sh "$DOMAIN_NAME.local"
 
-touch ~/ssl/fullchain.pem
-cat > ~/ssl/fullchain.pem <<EOL
------BEGIN CERTIFICATE-----
-MIICNzCCAd2gAwIBAgIRAJcvjtUOW4q1YHEBwF7OvjcwCgYIKoZIzj0EAwIwNjER
-MA8GA1UEChMITG9jYWwgQ0ExITAfBgNVBAMTGExvY2FsIENBIEludGVybWVkaWF0
-ZSBDQTAeFw0yMjA3MjMxMjEyNTFaFw0zMDA3MTgwNDEzNTFaMCExHzAdBgNVBAMT
-FmFpcmdhcC5kcm9uZWVuZ2FnZS5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNC
-AASnUtK+lzbP8dzEgpWwl50L8FzyJ0ZCe+OtGUc+8fW4wCqrR3oA2rD8x8yKMjK/
-lv5Ae8v5mznDKSnc9twjUi4io4HgMIHdMA4GA1UdDwEB/wQEAwIHgDAdBgNVHSUE
-FjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwHQYDVR0OBBYEFCRDnsVDIl9qB/cQCHUI
-laBSnX9sMB8GA1UdIwQYMBaAFNyNY7GDju6RYJ8bTxfcznV5z3JPMCEGA1UdEQQa
-MBiCFmFpcmdhcC5kcm9uZWVuZ2FnZS5jb20wSQYMKwYBBAGCpGTGKEABBDkwNwIB
-AQQFYWRtaW4EK3AwRGJ5WG5tWmxIemNGMWRPX3hOWl9UeU02TWcxanZXT0t6Qi1i
-SEM3X0UwCgYIKoZIzj0EAwIDSAAwRQIgL2mPjeL/ws9ntqM9L/kMWNIf+iYDhfpj
-zTGO10gjDd8CIQDOaM0E1aAmXU2QmrIIkMQkjfh9kFI89IoOoKpphJKpEA==
------END CERTIFICATE-----
------BEGIN CERTIFICATE-----
-MIIByDCCAW6gAwIBAgIQczsAHzwDIBCtf1ytd1W+BjAKBggqhkjOPQQDAjAuMREw
-DwYDVQQKEwhMb2NhbCBDQTEZMBcGA1UEAxMQTG9jYWwgQ0EgUm9vdCBDQTAeFw0y
-MjA3MTcxMzI5NTVaFw0zMjA3MTQxMzI5NTVaMDYxETAPBgNVBAoTCExvY2FsIENB
-MSEwHwYDVQQDExhMb2NhbCBDQSBJbnRlcm1lZGlhdGUgQ0EwWTATBgcqhkjOPQIB
-BggqhkjOPQMBBwNCAAShC3pILdoCYvIWQG7aOa+t6iPP6zZVyUsIaVFqpKprtDOH
-gogVZhgvLVsdROzDSBBNzb6NbFh+Fm9CtrXfT3Tgo2YwZDAOBgNVHQ8BAf8EBAMC
-AQYwEgYDVR0TAQH/BAgwBgEB/wIBADAdBgNVHQ4EFgQU3I1jsYOO7pFgnxtPF9zO
-dXnPck8wHwYDVR0jBBgwFoAUq/ulWfMgEcDFXC1lpZ2gys8NV7UwCgYIKoZIzj0E
-AwIDSAAwRQIgRH1xL8why5wEyHm3Z5Np+1OXN1idyKT7qLvxboYyw44CIQC5uupq
-VXzG85bfmkTIuL9fae2UBB6nMEN/adWJvmKfqA==
------END CERTIFICATE-----
-EOL
-
-touch ~/ssl/privkey.pem
-cat > ~/ssl/privkey.pem <<EOL
------BEGIN EC PRIVATE KEY-----
-MHcCAQEEIJZ30pmzQctlhI92k+FuggfovqshM5GDiQFIzAOBU8jsoAoGCCqGSM49
-AwEHoUQDQgAEp1LSvpc2z/HcxIKVsJedC/Bc8idGQnvjrRlHPvH1uMAqq0d6ANqw
-/MfMijIyv5b+QHvL+Zs5wykp3PbcI1IuIg==
------END EC PRIVATE KEY-----
-EOL
-
-touch ~/ssl/root.crt
-cat > ~/ssl/root.crt <<EOL
------BEGIN CERTIFICATE-----
-MIIBoDCCAUagAwIBAgIRAIRoieoJaTtMHil6bJCuTCcwCgYIKoZIzj0EAwIwLjER
-MA8GA1UEChMITG9jYWwgQ0ExGTAXBgNVBAMTEExvY2FsIENBIFJvb3QgQ0EwHhcN
-MjIwNzE3MTMyOTU0WhcNMzIwNzE0MTMyOTU0WjAuMREwDwYDVQQKEwhMb2NhbCBD
-QTEZMBcGA1UEAxMQTG9jYWwgQ0EgUm9vdCBDQTBZMBMGByqGSM49AgEGCCqGSM49
-AwEHA0IABGLMpesofsSGL2HirTawqB5CMuUkMBHcc094adrjtitswuusfv5wV7/M
-mRNFe2qZeCqjI0NNUUfwU2IMBjq1dyajRTBDMA4GA1UdDwEB/wQEAwIBBjASBgNV
-HRMBAf8ECDAGAQH/AgEBMB0GA1UdDgQWBBSr+6VZ8yARwMVcLWWlnaDKzw1XtTAK
-BggqhkjOPQQDAgNIADBFAiBcXR7okEjLYFfJjhrYqFJSESqfU3t7CKzy7+xLwkLD
-LQIhAJG6Q5lfcsDWmS7M+KMWf19H/ZaHqgrPBwgCA9sc5kl+
------END CERTIFICATE-----
 EOL
 
 
-echo -e $YELLOW "You need to have SSL Certificate at folder at ${PWD}" $NC
-echo -e $YELLOW "SSL name should be  localssl.crt  and localssl.key at at ${PWD}" $NC
+echo -e $YELLOW "You need to have SSL Certificate at folder at ${PWD}/ssl" $NC
+echo -e $YELLOW "SSL name should be  localssl.crt  and localssl.key at at ${PWD}/ssl" $NC
 echo -e $GREEN  "IMPOIRTANT!" $NC
 echo -e $YELLOW "root.crt certificate needs to be added to all your browsers and Android phones to access this private ssl certificate." $NC
 echo -e $YELLOW "Note: a working certificate has been created for you. but you can replace it with your own." $NC
 
 
 #register the root.crt so that NOW identifies it to validate ssl certificates.
-echo "export NODE_EXTRA_CA_CERTS=/home/$USER/ssl/root.crt" | sudo tee -a /etc/profile
+echo "export NODE_EXTRA_CA_CERTS=$HOME/ssl_local/DroneEngage_Provider_CA/ca.crt" | sudo tee -a /etc/profile
 
 read -p "Press any key to proceed " k
 
@@ -183,7 +146,7 @@ sudo npm install serve -g -timeout=9999999
 
 ###################################### Local Maps
 echo -e $GREEN "Install Local Maps" $NC
-mkdir ~/map ~/map/cachedMap
+mkdir /home/pi/map /home/pi/map/cachedMap
 
 
 pushd  ~/map/cachedMap
@@ -213,7 +176,7 @@ sudo apt install build-essential cmake libzmq3-dev pkg-config
 
 npm install -timeout=9999999 
 echo -e $BLUE "linking ssl folder" $NC
-ln -s ~/ssl ./ssl
+ln -s $HOME/ssl_local/ssl_airgap/ ./ssl
 echo -e $BLUE "register as a service in pm2" $NC
 sudo pm2 delete droneengage_auth
 sudo pm2 start server.js  -n droneengage_auth
@@ -233,7 +196,7 @@ pushd ~/droneengage_server
 npm install -timeout=9999999
 cd server
 echo -e $BLUE "linking ssl folder" $NC
-ln -s ~/ssl ./ssl
+ln -s $HOME/ssl_local/ssl_airgap/ ./ssl
 cd ..
 echo -e $BLUE "register as a service in pm2" $NC
 sudo pm2 delete droneengage_server
@@ -253,26 +216,45 @@ git clone -b release --single-branch ${REPOSITORY_WEBCLIENT} --depth 1 ./droneen
 echo -e $BLUE "installing nodejs modules" $NC
 pushd ~/droneengage_webclient
 
-
-echo -e $BLUE "linking ssl folder" $NC
-ln -s ~/ssl ./ssl
 echo -e $BLUE "register as a service in pm2" $NC
 sudo pm2 delete webclient
-SERVE_ROOT=$(npm root -g)
-sudo pm2 start $SERVE_ROOT/serve/build/main.js  -n webclient -- -s build -l 8001 --ssl-cert $HOME/ssl/fullchain.pem --ssl-key $HOME/ssl/privkey.pem
+sudo pm2 start http-server -n webclient -- build -p 8001 --ssl --cert $HOME/ssl_local/ssl_airgap/domain.crt --key $HOME/ssl_local/ssl_airgap/domain.key
 sudo pm2 save
 popd
 
+
+
+########################################
+# Information
+echo -e "${YELLOW}Please register $HOME/ssl_local/DroneEngage_Provider_CA/ca.crt in your browser as a trusted Authority.${NC}"
+echo -e "${YELLOW}Please check this video: https://youtu.be/R1BedRTxuuY?si=s46PWwH1Ir94havS&t=621 for support.${NC}"
+
+
 ######################################## Create Access Point
+ASK HERE IF USER DONAT WANT THEN SKIP
+
 echo -e $GREEN "Create Access Point" $NC
 echo -e $YELLOW "This script will create an access point for your server." $NC
 
 echo -e $RED "Please run create_ap.sh to create access point" $NC
 read -p "Press any key to reboot now " k
 
-wget https://raw.githubusercontent.com/DroneEngage/DroneEngage_ScriptWiki/refs/heads/main/helper_scripts/create_ap.sh
-chmod +x create_ap.sh
-./create_ap.sh
+########################################### Start Access Point
+sudo systemctl stop dnsmasq
+sudo systemctl disable dnsmasq
+sudo systemctl stop hostapd
+sudo systemctl disable hostapd
+# sudo apt remove dnsmasq hostapd # Only if you are sure you don't need them for other purposes
+
+# sudo systemctl status NetworkManager
+sudo nmcli con delete hotspot # Remove if it exists to start fresh
+sudo nmcli con add type wifi ifname wlan0 con-name hotspot ssid $AP_SSID autoconnect yes
+sudo nmcli con modify hotspot wifi-sec.key-mgmt wpa-psk
+sudo nmcli con modify hotspot wifi-sec.psk "${$AP_PWD}"
+sudo nmcli con modify hotspot 802-11-wireless.mode ap 802-11-wireless.band bg ipv4.method shared
+sudo nmcli con modify hotspot ipv4.method shared ipv4.addresses 192.169.9.1/24
+sudo nmcli con up hotspot
+
 
 
 ######################################## FINISH

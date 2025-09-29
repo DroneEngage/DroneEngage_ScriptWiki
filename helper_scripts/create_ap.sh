@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# BOOKWORM CODE
 SSID_IP='192.189.9.1'
 
 DOMAIN_NAME='airgap.droneengage.com'

@@ -22,9 +22,9 @@ BASE_DIR="/home/pi/ssl_local"
 # Define names and paths for the CA
 CA_NAME="DroneEngage_Provider_CA"
 CA_DIR="$BASE_DIR/$CA_NAME"
-CA_KEY="$CA_DIR/ca.key"
-CA_CRT="$CA_DIR/ca.crt"
-CA_CONFIG="$BASE_DIR/ca.cnf"
+CA_KEY="$CA_DIR/root.key"
+CA_CRT="$CA_DIR/root.crt"
+CA_CONFIG="$BASE_DIR/root.cnf"
 
 # Define names and paths for the Domain Certificate
 DOMAIN_DIR="$BASE_DIR/$DOMAIN_NAME" # Changed to use the domain name for the directory

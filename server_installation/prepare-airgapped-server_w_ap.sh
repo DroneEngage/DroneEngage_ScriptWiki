@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Air Gapped Server Setup Script for Raspberry Pi 4 (Raspbian Bullseye)
-# Version: 4.0
+# Version: 4.5.0
 # Description: This script automates the setup of an air-gapped server for DroneEngage.
 # Prerequisites: Raspberry Pi 4, Raspbian Bullseye, sudo privileges.
 # Author: Mohammad Hefny
 # Repository: https://github.com/DroneEngage/DroneEngage_ScriptWiki
 
-SCRIPT_VERSION='4.5'
+SCRIPT_VERSION='4.5.0'
 
 ACTIVATE_AP=FALSE
 AP_SSID='DE_SERVER'
@@ -37,8 +37,6 @@ NC='\033[0m' # No Color
 
 LOG_FILE="/var/log/droneengage_setup.log"
 
-exec 1>>"$LOG_FILE" 2>&1
-trap 'echo -e "${RED}Script interrupted. Check $LOG_FILE for details.${NC}"; exit 1' INT
 
 
 echo -e $YELLOW "INSTALLING AIRGAP SERVER FOR DRONEENGAGE" $NC

@@ -84,12 +84,15 @@ chmod +x create_domain_name.sh
 
 SSL_DIR="$HOME/ssl_local/ssl_airgap"
 
-echo -e $YELLOW "You need to have SSL Certificate at folder at ${SSL_DIR}" $NC
-echo -e $YELLOW "SSL name should be  localssl.crt  and localssl.key at at ${SSL_DIR}" $NC
-echo -e $GREEN  "IMPOIRTANT!" $NC
-echo -e $YELLOW "root.crt certificate needs to be added to all your browsers and Android phones to access this private ssl certificate." $NC
-echo -e $YELLOW "Note: a working certificate has been created for you. but you can replace it with your own." $NC
+cp $HOME/ssl_local/DroneEngage_Provider_CA/root.crt  $SSL_DIR/
 
+echo -e $YELLOW "You need to have SSL Certificate at folder at $SSL_DIR" $NC
+echo -e $YELLOW "SSL name should be  [domain.crt] and [domain.key] at at $SSL_DIR" $NC
+echo -e $GREEN  "IMPOIRTANT!" $NC
+echo -e $RED "${HOME}/ssl_local/DroneEngage_Provider_CA/root.crt " $NC
+echo -e $YELLOW "The above certificate needs to be added to all your browsers and Android phones to access this private ssl certificate." $NC
+echo -e $YELLOW "Note: a working certificate has been created for you. but you can replace it with your own." $NC
+read -p "Press any key to proceed " k
 
 
 #register the root.crt so that NOW identifies it to validate ssl certificates.
@@ -122,12 +125,19 @@ sudo systemctl enable coturn
 sudo systemctl start coturn
 
 ###################################### NODEJS 
+# Check if Node.js is installed
+# Check if Node.js is installed
 if command -v node &>/dev/null; then
   INSTALLED_VERSION=$(node -v | cut -d. -f1 | tr -d 'v')
   if [[ "$INSTALLED_VERSION" -ge "$NODE_MAJOR" ]]; then
     echo -e "${GREEN}Node.js version $INSTALLED_VERSION is installed. Skipping installation.${NC}"
   else
     echo -e "${YELLOW}Node.js version $INSTALLED_VERSION is installed, but version $NODE_MAJOR is required. Updating...${NC}"
+    # Remove existing Node.js to avoid conflicts
+    sudo apt-get remove -y nodejs
+    sudo apt-get purge -y nodejs
+    sudo rm -f /etc/apt/sources.list.d/nodesource.list
+    # Install Node.js 22
     sudo apt-get update
     sudo apt-get install -y ca-certificates curl gnupg
     sudo mkdir -p /etc/apt/keyrings
@@ -148,7 +158,11 @@ else
   sudo apt-get install nodejs -y
   sudo npm install -g npm@latest
 fi
+
+# Verify installed versions
+echo -e "${GREEN}Node.js version installed:${NC}"
 node -v
+echo -e "${GREEN}npm version installed:${NC}"
 npm -v
 
 
@@ -160,32 +174,28 @@ if command -v pm2 &>/dev/null; then
   echo -e "${GREEN}PM2 is already installed. Skipping installation.${NC}"
 else
   echo -e "${GREEN}Installing PM2...${NC}"
-  sudo npm install -g pm2 --timeout=9999999
+  sudo npm install -g pm2 ---fetch-timeout=9999999
   sudo pm2 startup
   sudo pm2 save
 fi
 pm2 -v
 
-###################################### GIT
-echo -e $GREEN "Install GIT" $NC
-sudo apt install -y git
-
 
 ###################################### NODE-HTTP-SERVER
 echo -e $GREEN "Install Http-Server & Serve" $NC
-sudo npm install http-server -g -timeout=9999999
-sudo npm install serve -g -timeout=9999999
+sudo npm install http-server -g --fetch-timeout=9999999
+sudo npm install serve -g --fetch-timeout=9999999
 
 
 ###################################### Local Maps
 echo -e $GREEN "Install Local Maps" $NC
-mkdir /home/pi/map /home/pi/map/cachedMap
+mkdir -p $HOME/map/cachedMap
 
 
-pushd  ~/map/cachedMap
+pushd  $HOME/map/cachedMap
 echo -e $YELLOW "Put cached IMAGES at ${PWD}" $NC
 sudo pm2 startup
-sudo pm2 start http-server  -n map_server -x  -- ~/map/cachedMap  -p 88 -C ~/ssl/fullchain.pem -K ~/ssl/privkey.pem  --ssl
+sudo pm2 start http-server  -n map_server -x  -- ~/map/cachedMap  -p 88 --ssl --cert $HOME/ssl_local/ssl_airgap/domain.crt --key $HOME/ssl_local/ssl_airgap/domain.key
 sudo pm2 save
 sudo pm2 list
 echo -e $YELLOW "Images are exposed as https://${DOMAIN_NAME}:88/." $NC
@@ -194,36 +204,21 @@ echo -e $YELLOW "for mode info check this video: https://youtu.be/ppwuUqomxXY" $
 popd
 read -p "Press any key to proceed " k
 
-
-echo -e "${GREEN}Installing Local Maps...${NC}"
-mkdir -p /home/pi/map/cachedMap
-
-pushd /home/pi/map/cachedMap
-echo -e "${YELLOW}Place cached images at ${PWD}${NC}"
-sudo pm2 start http-server --name map_server -- ~/map/cachedMap -p 88 --ssl --cert "${SSL_DIR}/domain.crt" --key "${SSL_DIR}/domain.key"
-sudo pm2 save
-sudo pm2 list
-echo -e "${YELLOW}Images are exposed at https://${DOMAIN_NAME}:88/.${NC}"
-echo -e "${YELLOW}Configure the web client to use these images as a map. See https://cloud.ardupilot.org for help.${NC}"
-echo -e "${YELLOW}For more info, see: https://youtu.be/ppwuUqomxXY${NC}"
-popd
-read -p "Press any key to proceed " k
-
 ###################################### DroneEngage-Authenticator
 echo -e $GREEN "DroneEngage-Authenticator" $NC
 echo -e $BLUE "downloading release code" $NC
-cd ~
+cd $HOME
 git clone -b release --single-branch ${REPOSITORY_AUTH} --depth 1 ./droneengage_authenticator
 if [[ ! -d droneengage_authenticator ]]; then
   echo -e "${RED}Failed to clone DroneEngage-Authenticator repository. Exiting.${NC}"
   exit 1
 fi
 
-pushd ~/droneengage_authenticator
+pushd $HOME/droneengage_authenticator
 echo -e $BLUE "installing nodejs modules" $NC
 
 sudo apt install -y build-essential cmake libzmq3-dev pkg-config
-npm install -timeout=9999999 
+npm install --fetch-timeout=9999999 
 if [[ $? -ne 0 ]]; then
   echo -e "${RED}Failed to install Node.js modules. Exiting.${NC}"
   exit 1
@@ -243,7 +238,7 @@ popd
 ###################################### DroneEngage-Server
 echo -e $GREEN "DroneEngage-Server" $NC
 echo -e $BLUE "downloading release code" $NC
-cd ~
+cd $HOME
 git clone -b release --single-branch ${REPOSITORY_SERVER} --depth 1 ./droneengage_server
 if [[ ! -d droneengage_server ]]; then
   echo -e "${RED}Failed to clone DroneEngage-Server repository. Exiting.${NC}"
@@ -251,8 +246,8 @@ if [[ ! -d droneengage_server ]]; then
 fi
 
 echo -e $BLUE "installing nodejs modules" $NC
-pushd ~/droneengage_server
-npm install -timeout=9999999
+pushd $HOME/droneengage_server
+npm install --fetch-timeout=9999999
 if [[ $? -ne 0 ]]; then
   echo -e "${RED}Failed to install Node.js modules. Exiting.${NC}"
   exit 1
@@ -283,7 +278,7 @@ if [[ ! -d droneengage_webclient ]]; then
 fi
 
 echo -e $BLUE "installing nodejs modules" $NC
-pushd ~/droneengage_webclient
+pushd $HOME/droneengage_webclient
 
 echo -e $BLUE "register as a service in pm2" $NC
 sudo pm2 delete webclient 2>/dev/null

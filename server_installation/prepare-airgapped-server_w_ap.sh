@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Air Gapped Server Setup Script for Raspberry Pi 4 (Raspbian Bullseye)
-# Version: 2.3
+# Version: 4.0
 # Description: This script automates the setup of an air-gapped server for DroneEngage.
 # Prerequisites: Raspberry Pi 4, Raspbian Bullseye, sudo privileges.
-# Author: Your Name
+# Author: Mohammad Hefny
 # Repository: https://github.com/DroneEngage/DroneEngage_ScriptWiki
 
 SCRIPT_VERSION='3.0'
@@ -35,6 +35,10 @@ YELLOW='\033[1;33m'
 BLUE='\033[1;34m'
 NC='\033[0m' # No Color
 
+LOG_FILE="/var/log/droneengage_setup.log"
+
+exec 1>>"$LOG_FILE" 2>&1
+trap 'echo -e "${RED}Script interrupted. Check $LOG_FILE for details.${NC}"; exit 1' INT
 
 
 echo -e $YELLOW "INSTALLING AIRGAP SERVER FOR DRONEENGAGE" $NC
@@ -43,11 +47,21 @@ echo -e $GREEN "script version $SCRIPT_VERSION"
 read -p "Press any key to proceed " k
 
 
-
 sudo apt update
+
+###################################### Prepare tools
+# Validation: Check if required tools (e.g., git, curl, wget) are installed before proceeding.
+for cmd in git curl wget; do
+  if ! command -v "$cmd" &>/dev/null; then
+    echo -e "${RED}$cmd is required but not installed. Installing...${NC}"
+    sudo apt install -y "$cmd"
+  fi
+done
 
 ###################################### SSL 
 ## Rename Host
+# Backup: Before modifying /etc/hosts or other system files, create backups.
+sudo cp /etc/hosts /etc/hosts.bak
 # 1. Set the static hostname (updates /etc/hostname)
 sudo hostnamectl set-hostname "$DOMAIN_NAME"
 # 2. Update /etc/hosts (manual fix for resolution)
@@ -59,22 +73,27 @@ sudo sed -i "s/^127.0.0.1\s\+.*$/127.0.0.1\tlocalhost\t$DOMAIN_NAME/" /etc/hosts
 echo -e $GREEN "Hostname updated and local resolution configured." $NC
 
 ## Generate SSL
-https://raw.githubusercontent.com/DroneEngage/DroneEngage_ScriptWiki/refs/heads/main/helper_scripts/create_domain_name.sh
+echo -e "${GREEN}Downloading SSL certificate generation script...${NC}"
+wget -O create_domain_name.sh https://raw.githubusercontent.com/DroneEngage/DroneEngage_ScriptWiki/main/helper_scripts/create_domain_name.sh
+if [[ ! -f create_domain_name.sh ]]; then
+  echo -e "${RED}Failed to download create_domain_name.sh. Exiting.${NC}"
+  exit 1
+fi
 chmod +x create_domain_name.sh
-./create_domain_name.sh "$DOMAIN_NAME.local"
+./create_domain_name.sh "${DOMAIN_NAME}.local"
 
-EOL
+SSL_DIR="$HOME/ssl_local/ssl_airgap"
 
-
-echo -e $YELLOW "You need to have SSL Certificate at folder at ${PWD}/ssl" $NC
-echo -e $YELLOW "SSL name should be  localssl.crt  and localssl.key at at ${PWD}/ssl" $NC
+echo -e $YELLOW "You need to have SSL Certificate at folder at ${SSL_DIR}" $NC
+echo -e $YELLOW "SSL name should be  localssl.crt  and localssl.key at at ${SSL_DIR}" $NC
 echo -e $GREEN  "IMPOIRTANT!" $NC
 echo -e $YELLOW "root.crt certificate needs to be added to all your browsers and Android phones to access this private ssl certificate." $NC
 echo -e $YELLOW "Note: a working certificate has been created for you. but you can replace it with your own." $NC
 
 
+
 #register the root.crt so that NOW identifies it to validate ssl certificates.
-echo "export NODE_EXTRA_CA_CERTS=$HOME/ssl_local/DroneEngage_Provider_CA/ca.crt" | sudo tee -a /etc/profile
+echo "export NODE_EXTRA_CA_CERTS=$HOME/ssl_local/DroneEngage_Provider_CA/root.crt" | sudo tee -a /etc/profile
 
 read -p "Press any key to proceed " k
 
@@ -86,7 +105,7 @@ sudo apt install -y coturn
 echo -e $BLUE "Run CoTurn as a Service" $NC
 
 sudo touch /etc/turnserver.conf 
-sudo bash -c "cat > /etc/turnserver.conf  <<EOL
+sudo bash -c "cat > /etc/turnserver.conf <<EOL
 listening-port=3478
 tls-listening-port=5349
 listening-ip=0.0.0.0
@@ -97,19 +116,33 @@ fingerprint
 lt-cred-mech
 server-name=${DOMAIN_NAME}
 user=${TURN_PWD}
-EOL
-"
+EOL"
+
+sudo systemctl enable coturn
+sudo systemctl start coturn
 
 ###################################### NODEJS 
 if command -v node &>/dev/null; then
-  echo -e "${GREEN}Node.js is already installed. Skipping installation.${NC}"
+  INSTALLED_VERSION=$(node -v | cut -d. -f1 | tr -d 'v')
+  if [[ "$INSTALLED_VERSION" -ge "$NODE_MAJOR" ]]; then
+    echo -e "${GREEN}Node.js version $INSTALLED_VERSION is installed. Skipping installation.${NC}"
+  else
+    echo -e "${YELLOW}Node.js version $INSTALLED_VERSION is installed, but version $NODE_MAJOR is required. Updating...${NC}"
+    sudo apt-get update
+    sudo apt-get install -y ca-certificates curl gnupg
+    sudo mkdir -p /etc/apt/keyrings
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+    sudo apt-get update
+    sudo apt-get install nodejs -y
+    sudo npm install -g npm@latest
+  fi
 else
-  echo -e $GREEN "Install NodeJS" $NC
+  echo -e "${GREEN}Installing Node.js version $NODE_MAJOR...${NC}"
   sudo apt-get update
   sudo apt-get install -y ca-certificates curl gnupg
   sudo mkdir -p /etc/apt/keyrings
   curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-  
   echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
   sudo apt-get update
   sudo apt-get install nodejs -y
@@ -118,16 +151,16 @@ fi
 node -v
 npm -v
 
+
 read -p "Press any key to proceed " k
 
 ###################################### PM2
-echo -e $BLUE "Check if PM2 installed" $NC
-if npm list -g pm2 &>/dev/null; then
-  echo -e $GREEN "pm2 is already installed. Skipping installation."
+echo -e "${BLUE}Checking if PM2 is installed...${NC}"
+if command -v pm2 &>/dev/null; then
+  echo -e "${GREEN}PM2 is already installed. Skipping installation.${NC}"
 else
-  # Install pm2 globally
-  echo -e $GREEN "Install PM2" $NC
-  sudo npm install -g pm2 -timeout=9999999
+  echo -e "${GREEN}Installing PM2...${NC}"
+  sudo npm install -g pm2 --timeout=9999999
   sudo pm2 startup
   sudo pm2 save
 fi
@@ -162,23 +195,45 @@ popd
 read -p "Press any key to proceed " k
 
 
+echo -e "${GREEN}Installing Local Maps...${NC}"
+mkdir -p /home/pi/map/cachedMap
+
+pushd /home/pi/map/cachedMap
+echo -e "${YELLOW}Place cached images at ${PWD}${NC}"
+sudo pm2 start http-server --name map_server -- ~/map/cachedMap -p 88 --ssl --cert "${SSL_DIR}/domain.crt" --key "${SSL_DIR}/domain.key"
+sudo pm2 save
+sudo pm2 list
+echo -e "${YELLOW}Images are exposed at https://${DOMAIN_NAME}:88/.${NC}"
+echo -e "${YELLOW}Configure the web client to use these images as a map. See https://cloud.ardupilot.org for help.${NC}"
+echo -e "${YELLOW}For more info, see: https://youtu.be/ppwuUqomxXY${NC}"
+popd
+read -p "Press any key to proceed " k
 
 ###################################### DroneEngage-Authenticator
 echo -e $GREEN "DroneEngage-Authenticator" $NC
 echo -e $BLUE "downloading release code" $NC
 cd ~
 git clone -b release --single-branch ${REPOSITORY_AUTH} --depth 1 ./droneengage_authenticator
+if [[ ! -d droneengage_authenticator ]]; then
+  echo -e "${RED}Failed to clone DroneEngage-Authenticator repository. Exiting.${NC}"
+  exit 1
+fi
 
 pushd ~/droneengage_authenticator
 echo -e $BLUE "installing nodejs modules" $NC
 
-sudo apt install build-essential cmake libzmq3-dev pkg-config
-
+sudo apt install -y build-essential cmake libzmq3-dev pkg-config
 npm install -timeout=9999999 
+if [[ $? -ne 0 ]]; then
+  echo -e "${RED}Failed to install Node.js modules. Exiting.${NC}"
+  exit 1
+fi
+
 echo -e $BLUE "linking ssl folder" $NC
-ln -s $HOME/ssl_local/ssl_airgap/ ./ssl
+ln -sf "${SSL_DIR}" ./ssl
+
 echo -e $BLUE "register as a service in pm2" $NC
-sudo pm2 delete droneengage_auth
+sudo pm2 delete droneengage_auth 2>/dev/null
 sudo pm2 start server.js  -n droneengage_auth
 sudo pm2 save
 popd
@@ -190,16 +245,26 @@ echo -e $GREEN "DroneEngage-Server" $NC
 echo -e $BLUE "downloading release code" $NC
 cd ~
 git clone -b release --single-branch ${REPOSITORY_SERVER} --depth 1 ./droneengage_server
+if [[ ! -d droneengage_server ]]; then
+  echo -e "${RED}Failed to clone DroneEngage-Server repository. Exiting.${NC}"
+  exit 1
+fi
 
 echo -e $BLUE "installing nodejs modules" $NC
 pushd ~/droneengage_server
 npm install -timeout=9999999
+if [[ $? -ne 0 ]]; then
+  echo -e "${RED}Failed to install Node.js modules. Exiting.${NC}"
+  exit 1
+fi
+
 cd server
 echo -e $BLUE "linking ssl folder" $NC
-ln -s $HOME/ssl_local/ssl_airgap/ ./ssl
+ln -sf "${SSL_DIR}" ./ssl
 cd ..
+
 echo -e $BLUE "register as a service in pm2" $NC
-sudo pm2 delete droneengage_server
+sudo pm2 delete droneengage_server 2>/dev/null
 sudo pm2 start server.js  -n droneengage_server
 sudo pm2 save
 popd
@@ -212,12 +277,16 @@ echo -e $BLUE "downloading release code" $NC
 cd ~
 
 git clone -b release --single-branch ${REPOSITORY_WEBCLIENT} --depth 1 ./droneengage_webclient
+if [[ ! -d droneengage_webclient ]]; then
+  echo -e "${RED}Failed to clone DroneEngage-Webclient repository. Exiting.${NC}"
+  exit 1
+fi
 
 echo -e $BLUE "installing nodejs modules" $NC
 pushd ~/droneengage_webclient
 
 echo -e $BLUE "register as a service in pm2" $NC
-sudo pm2 delete webclient
+sudo pm2 delete webclient 2>/dev/null
 sudo pm2 start http-server -n webclient -- build -p 8001 --ssl --cert $HOME/ssl_local/ssl_airgap/domain.crt --key $HOME/ssl_local/ssl_airgap/domain.key
 sudo pm2 save
 popd
@@ -226,35 +295,33 @@ popd
 
 ########################################
 # Information
-echo -e "${YELLOW}Please register $HOME/ssl_local/DroneEngage_Provider_CA/ca.crt in your browser as a trusted Authority.${NC}"
+echo -e "${YELLOW}Please register $HOME/ssl_local/DroneEngage_Provider_CA/root.crt in your browser as a trusted Authority.${NC}"
 echo -e "${YELLOW}Please check this video: https://youtu.be/R1BedRTxuuY?si=s46PWwH1Ir94havS&t=621 for support.${NC}"
 
 
 ######################################## Create Access Point
-ASK HERE IF USER DONAT WANT THEN SKIP
+echo -e "${GREEN}Create Access Point${NC}"
+echo -e "${YELLOW}Would you like to create a Wi-Fi access point for your server? (y/n)${NC}"
+read -p "Enter your choice: " create_ap
+if [[ "$create_ap" =~ ^[Yy]$ ]]; then
+  echo -e "${GREEN}Setting up access point...${NC}"
+  sudo systemctl stop dnsmasq
+  sudo systemctl disable dnsmasq
+  sudo systemctl stop hostapd
+  sudo systemctl disable hostapd
+  sudo nmcli con delete hotspot 2>/dev/null
+  sudo nmcli con add type wifi ifname wlan0 con-name hotspot ssid "${AP_SSID}" autoconnect yes
+  sudo nmcli con modify hotspot wifi-sec.key-mgmt wpa-psk
+  sudo nmcli con modify hotspot wifi-sec.psk "${AP_PWD}"
+  sudo nmcli con modify hotspot 802-11-wireless.mode ap 802-11-wireless.band bg ipv4.method shared
+  sudo nmcli con modify hotspot ipv4.addresses "${AP_IP}"
+  sudo nmcli con up hotspot
+else
+  echo -e "${YELLOW}Skipping access point setup.${NC}"
+fi
 
-echo -e $GREEN "Create Access Point" $NC
-echo -e $YELLOW "This script will create an access point for your server." $NC
-
-echo -e $RED "Please run create_ap.sh to create access point" $NC
+echo -e "${YELLOW}Rebooting to apply access point settings...${NC}"
 read -p "Press any key to reboot now " k
-
-########################################### Start Access Point
-sudo systemctl stop dnsmasq
-sudo systemctl disable dnsmasq
-sudo systemctl stop hostapd
-sudo systemctl disable hostapd
-# sudo apt remove dnsmasq hostapd # Only if you are sure you don't need them for other purposes
-
-# sudo systemctl status NetworkManager
-sudo nmcli con delete hotspot # Remove if it exists to start fresh
-sudo nmcli con add type wifi ifname wlan0 con-name hotspot ssid $AP_SSID autoconnect yes
-sudo nmcli con modify hotspot wifi-sec.key-mgmt wpa-psk
-sudo nmcli con modify hotspot wifi-sec.psk "${$AP_PWD}"
-sudo nmcli con modify hotspot 802-11-wireless.mode ap 802-11-wireless.band bg ipv4.method shared
-sudo nmcli con modify hotspot ipv4.method shared ipv4.addresses 192.169.9.1/24
-sudo nmcli con up hotspot
-
-
+sudo reboot
 
 ######################################## FINISH

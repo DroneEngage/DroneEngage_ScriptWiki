@@ -7,7 +7,7 @@
 # Author: Mohammad Hefny
 # Repository: https://github.com/DroneEngage/DroneEngage_ScriptWiki
 
-SCRIPT_VERSION='3.0'
+SCRIPT_VERSION='4.5'
 
 ACTIVATE_AP=FALSE
 AP_SSID='DE_SERVER'
@@ -69,36 +69,136 @@ echo -e $GREEN "Updating /etc/hosts to include $DOMAIN_NAME..." $NC
 # Use sed to replace the existing 127.0.0.1 line to ensure it includes the new hostname.
 # This assumes the original line looks like "127.0.0.1  localhost" or "127.0.0.1  oldname"
 # The -i flag edits the file in place.
-sudo sed -i "s/^127.0.0.1\s\+.*$/127.0.0.1\tlocalhost\t$DOMAIN_NAME/" /etc/hosts
+sudo sed -i "/^127.0.0.1\s\+/s/\(\s\+${DOMAIN_NAME}\)\?$/\t${DOMAIN_NAME}/" /etc/hosts
 echo -e $GREEN "Hostname updated and local resolution configured." $NC
 
 ## Generate SSL
-echo -e "${GREEN}Downloading SSL certificate generation script...${NC}"
-wget -O create_domain_name.sh https://raw.githubusercontent.com/DroneEngage/DroneEngage_ScriptWiki/main/helper_scripts/create_domain_name.sh
-if [[ ! -f create_domain_name.sh ]]; then
-  echo -e "${RED}Failed to download create_domain_name.sh. Exiting.${NC}"
-  exit 1
-fi
-chmod +x create_domain_name.sh
-./create_domain_name.sh "${DOMAIN_NAME}.local"
-
+mkdir -p $HOME/ssl_local/ssl_airgap/
 SSL_DIR="$HOME/ssl_local/ssl_airgap"
 
-cp $HOME/ssl_local/DroneEngage_Provider_CA/root.crt  $SSL_DIR/
+
+touch $SSL_DIR/domain.crt
+cat > $SSL_DIR/domain.crt <<EOL
+-----BEGIN CERTIFICATE-----
+MIIFLTCCAxWgAwIBAgIUEAAGtGtkR2XRLMRQcO97JnlsQO8wDQYJKoZIhvcNAQEL
+BQAwgZ4xCzAJBgNVBAYTAlVTMRMwEQYDVQQIDApDYWxpZm9ybmlhMREwDwYDVQQH
+DAhTYW4gSm9zZTEgMB4GA1UECgwXRHJvbmVFbmdhZ2UgUHJpdmF0ZSBQS0kxHjAc
+BgNVBAsMFUNlcnRpZmljYXRlIEF1dGhvcml0eTElMCMGA1UEAwwcRHJvbmVFbmdh
+Z2UgUHJvdmlkZXIgUm9vdCBDQTAeFw0yNTA5MjkyMDE4NDhaFw0zNTA5MjcyMDE4
+NDhaMIGCMQswCQYDVQQGEwJVUzETMBEGA1UECAwKQ2FsaWZvcm5pYTERMA8GA1UE
+BwwIU2FuIEpvc2UxHDAaBgNVBAoME0Ryb25lRW5nYWdlIFN5c3RlbXMxFjAUBgNV
+BAsMDUlUIE9wZXJhdGlvbnMxFTATBgNVBAMMDGFpcmdhcC5sb2NhbDCCASIwDQYJ
+KoZIhvcNAQEBBQADggEPADCCAQoCggEBAI/MD1hBR+vYXTbKN0U6tWTxd7RDixyM
+BRfdfmXAEt2tfWzbCLrVhgnEpDe/zsaPCVH5FRom9sj++lDB6n3qoxe2GGKttLyq
+iU1IK/RldOm+5YJOtV8AvHXWyOMdEaxLfglwIXwulLJLC//dLsmxajAHGJxmTwtY
+mYxnk/kKjfFwj5LzQKRIWk4KYmEe/ZzVCbs3Hax+vqsgqbJ121f3u9uACmS6AcgP
+vNHRJJxZ+CiwZg2Xtzf9BWa4EHSLScd8+3tnhJlphdob0KUh7tf+i76zv3atzl0x
+rFsZlrvlgsburQ9PxyC+1wf6TMCAH+5lvev5BDe78WpQ2fSH+9UTUxsCAwEAAaN9
+MHswCwYDVR0PBAQDAgWgMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBcGA1UdEQQQMA6C
+DGFpcmdhcC5sb2NhbDAdBgNVHQ4EFgQUxETgCML8rKGu5arcRjPREIF43+AwHwYD
+VR0jBBgwFoAUpNzFNVBy4eSa1Fy5XpdnvJSC5/YwDQYJKoZIhvcNAQELBQADggIB
+AIc00LD89IHSc+g9YUX9tXXo0YVCrNrXExDyvUNQfDhZtGKQWe/XLgQiLR0ksy3f
+5F3RWnG2Hks7EGNGS6o4eCAstl4H1wWuN1LGby31OOt8uJsNt2Y1NJgr9Ssr4cK8
+TT2Xv1hqSxQXRAkGZXbXrz3/OGbj/UMUivqcfYvWkBMFyijRsSU1PxnPPUidwE8J
+jQIOpwuB5eBAwY5h37MffSGEkU2tMV89owsh2WExmX0xe9kIvr7MOsjjdwVfM4Kk
+A+RdlrnBBrTutCHKaDIUop9CrR1C9C/t+nafx6opXNtWTZoxd/U/cbY9If6qzkj9
+pKlqsFFapdxeVk0HVaehIgHNBr5uRSUwfLnVwNCwKNXlt8OrqG9wbSeoyrcWhKSk
+ir/U8nAwZEGmOTL1uORIjF1ctcNK+naAs9jn5hVCkmNsMm7HNjvyxvA1NSnu3G9i
+XDBxlkwnoDTfMuhefet0LRJ0v45u4u5A1UT+z4gSV8Vl+Nvc7ZjLyASMbQ5GWChB
+n2VinlZ0pBfk/XdsGE9IrzQVR4vL3HQYDndgXDPMca10KWI83IECAErEKByTqQ9l
+fOIVuFJmE5cfpTmNO1IOiy93tFEedIGgZxzrNbFRYrt4bXEBOdZ90TjPE3uvuRQe
+FXCwlMvPgR3qHm1v1qBdVwd6JXfQ1x67bOLfAvdIpza4
+-----END CERTIFICATE-----
+EOL
+
+touch $SSL_DIR/domain.key
+cat > $SSL_DIR/domain.key <<EOL
+-----BEGIN PRIVATE KEY-----
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCPzA9YQUfr2F02
+yjdFOrVk8Xe0Q4scjAUX3X5lwBLdrX1s2wi61YYJxKQ3v87GjwlR+RUaJvbI/vpQ
+wep96qMXthhirbS8qolNSCv0ZXTpvuWCTrVfALx11sjjHRGsS34JcCF8LpSySwv/
+3S7JsWowBxicZk8LWJmMZ5P5Co3xcI+S80CkSFpOCmJhHv2c1Qm7Nx2sfr6rIKmy
+ddtX97vbgApkugHID7zR0SScWfgosGYNl7c3/QVmuBB0i0nHfPt7Z4SZaYXaG9Cl
+Ie7X/ou+s792rc5dMaxbGZa75YLG7q0PT8cgvtcH+kzAgB/uZb3r+QQ3u/FqUNn0
+h/vVE1MbAgMBAAECggEADtWNdFx7rRa2JbD+Zau/oHO768KXXHEMv3Wv6ehC1KU7
++K8EkLL2r8BI8/Vba/wVM+R/FaJqYrl8cjinAP65J3jiEsqlCAeMatwPU22PU45y
+wnAYjCiZHeDz+rX6J5eRdNYhUNxvUOX8DWpbFB8ze1PoE+OxXilxjFyiamvOe9cq
+ElL31RiTX9NfkNKQ3Ptjj4CulGXHL639N5JHnZdTWMWxiabwhI7Ukruh3s9l4qFr
+rg0xpAbLNlBP6YRowYx7zndBylHaYwbB4aG6BvXfNbww6KOyyYiohvi4SkpWERH0
+1uULkPg3AFZMgMSgA6+/81VdRIE6pts0c9jI0rFuUQKBgQDEbFyMFoVDkmuIsvd1
+AWIdfTMUVhIFGVG8hABxtloPSSMI7R73UJk5AFun/6O9ZFeWkN6b4laaDDY5tvPo
+zVvkXvFgUsI36S9rjBQxzhAvTgFoCK+6w0w+zmYk3l4QoBHD7ggP93XxCohaliVR
+YUlIQavraWznnakUDwVeJVBbSwKBgQC7aXHGR04HoODad9G6/2QIrUEg+AAuZdV7
+J5LYf8KoeOddqxwCbT0hsc76JmK8XZ6qkDwWcqt9lOAaFXutKdFR99mMBgs5CA9U
+OhFnxARUPQVRS60hRJtklu8ittN8C2JzrYy2rL3vM7AtVWI0gQQQHtAc4aBcQpxZ
+70h3s821cQKBgQCCq0vN7dVtpGRhJh20+tyYnYdzieam+bcEYBQjkZnL/W2PLJ+j
+Cz1DTFetJUV6YtxZz7onnaTbCjCwqGMOhj8RZ4/P8n49z6S6OQ/eKiVeMtiAqvas
+meuJBKmy8TNGgBYRb7JxXMBbQBSBnszonH2x0e5ax2Gpm5q1O2Doxo30jQKBgGmg
+V3CiNZdVFAXtrDZRxMajJ2b2f9ump3h+6GO/Ni4P3o7LZsDzYpYACiCwy8tQlKGb
+I1KflIn2A4yP+SGyxPgG0gT6Tw74vPMCu1aZgrsbnUihd1WdvlsmOmd9VZq/K+D4
+uqsmlvIfVrdmPTBMWsbfJvpwLBpzrH1/wH8+xrzxAoGBAKYZzTkFtR3inafpoV3I
+UMa3CJkLPiCOw1NGJ0m6o8VnUq/xGQexlnZcWUGX/9cV+OH9hOTs+cI/jfwisPxQ
+JUyiWdp5jfu/ddoeEEEMlUkK5eZFHM0kHXLxsE6tW9dmHufl5Fmgw7pl8bI1ZpCS
+fZwHFgw3c0rGrTYo0gRzGib8
+-----END PRIVATE KEY-----
+EOL
+
+touch $SSL_DIR/root.crt
+cat > $SSL_DIR/root.crt <<EOL
+-----BEGIN CERTIFICATE-----
+MIIGLzCCBBegAwIBAgIUZHCrZun1UvEH0jSyuuGaTglJqIkwDQYJKoZIhvcNAQEL
+BQAwgZ4xCzAJBgNVBAYTAlVTMRMwEQYDVQQIDApDYWxpZm9ybmlhMREwDwYDVQQH
+DAhTYW4gSm9zZTEgMB4GA1UECgwXRHJvbmVFbmdhZ2UgUHJpdmF0ZSBQS0kxHjAc
+BgNVBAsMFUNlcnRpZmljYXRlIEF1dGhvcml0eTElMCMGA1UEAwwcRHJvbmVFbmdh
+Z2UgUHJvdmlkZXIgUm9vdCBDQTAeFw0yNTA5MjkyMDE4NDZaFw0zNTA5MjcyMDE4
+NDZaMIGeMQswCQYDVQQGEwJVUzETMBEGA1UECAwKQ2FsaWZvcm5pYTERMA8GA1UE
+BwwIU2FuIEpvc2UxIDAeBgNVBAoMF0Ryb25lRW5nYWdlIFByaXZhdGUgUEtJMR4w
+HAYDVQQLDBVDZXJ0aWZpY2F0ZSBBdXRob3JpdHkxJTAjBgNVBAMMHERyb25lRW5n
+YWdlIFByb3ZpZGVyIFJvb3QgQ0EwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIK
+AoICAQCoffLx20fDmltINNRL/vlXuTidU8rsdaBHt4uZA/2WDjci6Ce9N/MgxqBI
+oJcs/RTpM1KlNRjoppTB/7Eu9h99B3XThL+MRoMxCGSppCxyKvTBQm6aghYYwrfg
+XyHMpivyvxEw5pgS3Oa+30u6livARN3rl4KIgxZaMHJZXvf+BKZrheYJKto7o21w
+IWZMLWoenVM4TU36wNFBMfbDUXDUmzLYKTzmTVK+2wGe//rbKZHNQZ4kTY21UbLd
+y+XfWQjhrSL46eTIEyMeMW4obeEksxmrLdnnqua9LX3NB+0FAlFbwRMxSoKMOhIB
+248Jx5M/9/Hl41q38TGnRkUqMjJYj3E6UUHkeo+3p/dBuJHoQSV//4yatwcYXDx/
+J7PAz9gukkKE2aT9Su3yTDpi2nxwyJ/yvf++Ris3DE1fu2i7qYw/QoBJDjPXH1In
+YywJZBWiOeu/hbVcwLgH4FzfB1+05xZGQ86NkeLumnm03N7CVn/AlESA8bK29Bqk
+y/4PdVWhQild2Rq7tq7lMD1qv9AebxMijMXDX2yybqc9J6BA8ePCcaTNxAtyYPIT
+tugWuAf0g16NHP6RAhAbn+EtmFBeCCDDHhQlKCNW8DHbI95vdv9MMbCvv6x3q9kQ
+Yxcn/XNYO907djOuDLJStI95rvUIB1Te4Kejt2cxY8ElPcUY4wIDAQABo2MwYTAd
+BgNVHQ4EFgQUpNzFNVBy4eSa1Fy5XpdnvJSC5/YwHwYDVR0jBBgwFoAUpNzFNVBy
+4eSa1Fy5XpdnvJSC5/YwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAYYw
+DQYJKoZIhvcNAQELBQADggIBAFNd//RZdHC/GECnCYryYsZEuB4hUSVeTvDl4bs+
+dqRdxqlCXv+NLugKjW+3k3XyTHWR33NUEq84mScye2q66LwUy1GaGXzPLAY1rDf2
+9mJSygiKBuarvDe6GMa5R0zmO/cUeUasdgtKPHf8SHVPMHHhl/1WY8eQedrHwCOS
+LWKvi/KU7oJGD5uC51YVXrzbBjafoGt5+F9oQpLUJjGBVXe9fJ1SZYo22ynOgZQp
+tzQ/wrBWaVEetGjuUilOj4iX5n1ZQsucLTvHJYOOloDmwZHTSbZdD4B/ok3TUuwq
+KaNIanewSmP9cYjEwCol7uFZsccmlFMoLI2MkJkTEUuYq/iwiBz/MliuMV8gyXav
+GQEi9QWqpGjq35DyOrBLsQyvGUmALuUB8LN4DclTgrJeHcRHksl13QdKe388jtOk
+/9eeTpaLfUTqA3sVIGZapmVUqaLwz3txNzRVdDnr+YfzofYmZJ2Gal3h6PzDN6KX
+1z/f1m7+vj2oBE0pc/yohTZvSjqEQwd8lLFw4BM4O82hpodwg9y0MYK9tipojpUm
+cj0qG565aQRi/5db6Cxcre+NIFqHF4ek7J1jYvukhtbKlDDh7Qy8ksVvEdxCS6i1
+5b/4Tv9BZEl26U7cybOBY0zMtLA6VNC/ueyr0tI+dr4FfemAnbWZboVZYj2n/xGo
+9Buc
+-----END CERTIFICATE-----
+EOL
 
 echo -e $YELLOW "You need to have SSL Certificate at folder at $SSL_DIR" $NC
 echo -e $YELLOW "SSL name should be  [domain.crt] and [domain.key] at at $SSL_DIR" $NC
 echo -e $GREEN  "IMPOIRTANT!" $NC
-echo -e $RED "${HOME}/ssl_local/DroneEngage_Provider_CA/root.crt " $NC
+echo -e $RED "${SSL_DIR}/root.crt " $NC
 echo -e $YELLOW "The above certificate needs to be added to all your browsers and Android phones to access this private ssl certificate." $NC
 echo -e $YELLOW "Note: a working certificate has been created for you. but you can replace it with your own." $NC
 read -p "Press any key to proceed " k
 
 
 #register the root.crt so that NOW identifies it to validate ssl certificates.
-echo "export NODE_EXTRA_CA_CERTS=$HOME/ssl_local/DroneEngage_Provider_CA/root.crt" | sudo tee -a /etc/profile
+echo "export NODE_EXTRA_CA_CERTS=$SSL_DIR/root.crt" | sudo tee -a /etc/profile
 
 read -p "Press any key to proceed " k
+
+###################################### SSL
+
 
 
 ###################################### COTURN
@@ -125,7 +225,6 @@ sudo systemctl enable coturn
 sudo systemctl start coturn
 
 ###################################### NODEJS 
-# Check if Node.js is installed
 # Check if Node.js is installed
 if command -v node &>/dev/null; then
   INSTALLED_VERSION=$(node -v | cut -d. -f1 | tr -d 'v')

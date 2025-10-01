@@ -1,13 +1,12 @@
 #!/bin/bash
 
 # Air Gapped Server Setup Script for Raspberry Pi 4 (Raspbian Bullseye)
-# Version: 4.5.0
 # Description: This script automates the setup of an air-gapped server for DroneEngage.
 # Prerequisites: Raspberry Pi 4, Raspbian Bullseye, sudo privileges.
 # Author: Mohammad Hefny
 # Repository: https://github.com/DroneEngage/DroneEngage_ScriptWiki
 
-SCRIPT_VERSION='4.5.0'
+SCRIPT_VERSION='4.5.1'
 
 ACTIVATE_AP=FALSE
 AP_SSID='DE_SERVER'
@@ -67,7 +66,10 @@ echo -e $GREEN "Updating /etc/hosts to include $DOMAIN_NAME..." $NC
 # Use sed to replace the existing 127.0.0.1 line to ensure it includes the new hostname.
 # This assumes the original line looks like "127.0.0.1  localhost" or "127.0.0.1  oldname"
 # The -i flag edits the file in place.
-sudo sed -i "/^127.0.0.1\s\+/s/\(\s\+${DOMAIN_NAME}\)\?$/\t${DOMAIN_NAME}/" /etc/hosts
+sudo sed -i.bak "s/127\.0\.1\.1.*/127.0.1.1\t$DOMAIN_NAME/" /etc/hosts
+echo -e $GREEN "Applying new hostname..." $NC
+sudo hostnamectl set-hostname "$DOMAIN_NAME"
+
 echo -e $GREEN "Hostname updated and local resolution configured." $NC
 
 ## Generate SSL

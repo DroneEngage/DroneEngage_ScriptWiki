@@ -6,7 +6,7 @@
 # Author: Mohammad Hefny
 # Repository: https://github.com/DroneEngage/DroneEngage_ScriptWiki
 
-SCRIPT_VERSION='4.5.1'
+SCRIPT_VERSION='4.5.2'
 
 ACTIVATE_AP=FALSE
 AP_SSID='DE_SERVER'
@@ -68,7 +68,7 @@ echo -e $GREEN "Updating /etc/hosts to include $DOMAIN_NAME..." $NC
 # The -i flag edits the file in place.
 sudo sed -i.bak "s/127\.0\.1\.1.*/127.0.1.1\t$DOMAIN_NAME/" /etc/hosts
 echo -e $GREEN "Applying new hostname..." $NC
-sudo hostnamectl set-hostname "$DOMAIN_NAME"
+sudo sh -c "echo '$DOMAIN_NAME' > /etc/hostname"
 
 echo -e $GREEN "Hostname updated and local resolution configured." $NC
 

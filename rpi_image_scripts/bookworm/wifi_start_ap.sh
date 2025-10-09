@@ -19,6 +19,7 @@ sudo nmcli con modify hotspot wifi-sec.proto rsn  # Explicitly use WPA2 (RSN)
 sudo nmcli con modify hotspot wifi-sec.pairwise ccmp  # Use CCMP (AES) encryption
 sudo nmcli con modify hotspot wifi-sec.group ccmp
 sudo nmcli con modify hotspot ipv4.method shared ipv4.addresses 192.169.9.1/24
+sudo nmcli con modify hotspot 802-11-wireless-security.wps disabled
 
 # Bring up the hotspot
 sudo nmcli con up hotspot

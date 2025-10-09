@@ -407,8 +407,12 @@ if [[ "$create_ap" =~ ^[Yy]$ ]]; then
   sudo nmcli con add type wifi ifname wlan0 con-name hotspot ssid "${AP_SSID}" autoconnect yes
   sudo nmcli con modify hotspot wifi-sec.key-mgmt wpa-psk
   sudo nmcli con modify hotspot wifi-sec.psk "${AP_PWD}"
-  sudo nmcli con modify hotspot 802-11-wireless.mode ap 802-11-wireless.band bg ipv4.method shared
+  sudo nmcli con modify hotspot 802-11-wireless.mode ap 802-11-wireless.band bg
+  sudo nmcli con modify hotspot wifi-sec.proto rsn  # Explicitly use WPA2 (RSN)
+  sudo nmcli con modify hotspot wifi-sec.pairwise ccmp  # Use CCMP (AES) encryption
+  sudo nmcli con modify hotspot wifi-sec.group ccmp
   sudo nmcli con modify hotspot ipv4.addresses "${AP_IP}"
+  sudo nmcli con modify hotspot 802-11-wireless-security.wps disabled
   sudo nmcli con up hotspot
 else
   echo -e "${YELLOW}Skipping access point setup.${NC}"

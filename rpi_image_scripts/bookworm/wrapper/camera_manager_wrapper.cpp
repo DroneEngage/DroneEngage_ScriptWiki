@@ -9,6 +9,7 @@
 // g++ camera_manager_wrapper.cpp -o camera_manager_wrapper -pthread
 #include <iostream>    // For standard input/output operations
 #include <string>      // For std::string
+#include <vector>      // For std::vector to handle multiple scripts
 #include <cstdlib>     // For system(), exit()
 #include <thread>      // For std::this_thread::sleep_for
 #include <chrono>      // For std::chrono::seconds
@@ -18,11 +19,14 @@
 #include <csignal>     // For SIGTERM, SIGINT
 #include <getopt.h>    // For parsing command-line options
 
+#define VERSION_APP "3.0.0"
+
 // Global PID variables to track child processes
 pid_t camera_pid = -1;
 pid_t tracking_camera_pid = -1;
 pid_t ai_tracking_camera_pid = -1;
 pid_t de_camera_pid = -1;
+std::vector<pid_t> script_pids; // To track PIDs of executed scripts
 
 // Base directories for drone_engage modules
 const std::string BASE_CAMERA_MODULE_PATH = "/home/pi/drone_engage/de_camera/";
@@ -55,6 +59,62 @@ bool executeCommand(const std::string &cmd)
 }
 
 /**
+ * @brief Forks a new process to start a script.
+ * @param scriptPath The full path to the script to execute.
+ * @return The process ID (PID) of the child process, -1 on failure, or 0 if the script fails to start.
+ */
+pid_t startScript(const std::string &scriptPath)
+{
+    pid_t pid = fork();
+    if (pid == -1)
+    {
+        std::cerr << "Failed to fork for script: " << scriptPath << std::endl;
+        return -1;
+    }
+    else if (pid == 0)
+    {
+        std::cout << "Executing script: " << scriptPath << std::endl;
+        execlp("sh", "sh", "-c", scriptPath.c_str(), (char *)NULL);
+        perror(("execlp for script " + scriptPath + " failed").c_str());
+        return 0; // DONT EXIT IF ERROR
+    }
+
+    // Give the script a short time to start
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    // Check if the child process has exited (non-blocking)
+    int status;
+    pid_t result = waitpid(pid, &status, WNOHANG);
+    if (result == -1)
+    {
+        std::cerr << "Failed to check script process status for: " << scriptPath << std::endl;
+        return -1;
+    }
+    else if (result == pid)
+    {
+        // Child process exited
+        if (WIFEXITED(status))
+        {
+            int exit_code = WEXITSTATUS(status);
+            if (exit_code != 0)
+            {
+                std::cerr << "Script " << scriptPath << " failed with exit code " << exit_code << "." << std::endl;
+                return 0; // Indicate script failed, but not a critical failure
+            }
+        }
+        else
+        {
+            std::cerr << "Script " << scriptPath << " terminated abnormally." << std::endl;
+            return -1;
+        }
+    }
+
+    // Child process is still running
+    std::cout << "Script " << scriptPath << " started with PID: " << pid << std::endl;
+    return pid;
+}
+
+/**
  * @brief Forks a new process to start the rpicam-vid | ffmpeg pipeline.
  * @param cameraIndex The index of the virtual camera to stream to.
  * @param postProcessFile Optional path to a post-processing file.
@@ -82,7 +142,7 @@ pid_t startCameraPipeline(int cameraIndex, const std::string &postProcessFile)
         _exit(127);
     }
 
-   // Give the script a short time to perform camera detection
+    // Give the script a short time to perform camera detection
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     // Check if the child process has exited (non-blocking)
@@ -154,7 +214,7 @@ pid_t startModule(const std::string &modulePath, const std::string &moduleConfig
 }
 
 /**
- * @brief Gracefully stops all child processes.
+ * @brief Gracefully stops all child processes, including scripts.
  */
 void stopAllChildren()
 {
@@ -177,6 +237,14 @@ void stopAllChildren()
     {
         std::cout << "Stopping de_camera module (PID " << de_camera_pid << ")..." << std::endl;
         kill(de_camera_pid, SIGTERM);
+    }
+    for (pid_t script_pid : script_pids)
+    {
+        if (script_pid > 0)
+        {
+            std::cout << "Stopping script (PID " << script_pid << ")..." << std::endl;
+            kill(script_pid, SIGTERM);
+        }
     }
 }
 
@@ -209,6 +277,9 @@ int main(int argc, char *argv[])
     bool enable_de_camera = true; // Enabled by default
     int virtualCameraIndex = 0;
     std::string postProcessFilePath;
+    std::vector<std::string> scripts_to_execute; // To store script paths
+
+    std::cout << "Camera Wrapper ver: " << VERSION_APP << std::endl;
 
     // Parse command-line options
     static struct option long_options[] = {
@@ -216,10 +287,11 @@ int main(int argc, char *argv[])
         {"enable-tracker", no_argument, 0, 't'},
         {"enable-ai-tracker", no_argument, 0, 'a'},
         {"disable-de-camera", no_argument, 0, 'd'},
+        {"execute", required_argument, 0, 'e'},
         {0, 0, 0, 0}};
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "ctad", long_options, nullptr)) != -1)
+    while ((opt = getopt_long(argc, argv, "ctade:", long_options, nullptr)) != -1)
     {
         switch (opt)
         {
@@ -233,13 +305,16 @@ int main(int argc, char *argv[])
             enable_ai_tracker = true;
             break;
         case 'd':
-            // dont run camera module.
             enable_de_camera = false;
             break;
+        case 'e':
+            scripts_to_execute.push_back(optarg);
+            break;
         default:
-            std::cerr << "Usage: " << argv[0] << " [--enable-local-cam-capture] [--enable-tracker] [--enable-ai-tracker] [--disable-de-camera] <camera_index> [postprocess_file_path]" << std::endl;
+            std::cerr << "Usage: " << argv[0] << " [--enable-local-cam-capture] [--enable-tracker] [--enable-ai-tracker] [--disable-de-camera] [--execute script_path] <camera_index> [postprocess_file_path]" << std::endl;
             std::cerr << "Example: " << argv[0] << " --enable-local-cam-capture --enable-tracker 1" << std::endl;
             std::cerr << "Example: " << argv[0] << " --enable-ai-tracker 1 \"/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json\"" << std::endl;
+            std::cerr << "Example: " << argv[0] << " --enable-ai-tracker --execute /path/to/script.sh " << std::endl;
             return 1;
         }
     }
@@ -248,7 +323,7 @@ int main(int argc, char *argv[])
     if (optind >= argc)
     {
         std::cerr << "Missing camera_index argument." << std::endl;
-        std::cerr << "Usage: " << argv[0] << " [--enable-local-cam-capture] [--enable-tracker] [--enable-ai-tracker] [--disable-de-camera] <camera_index> [postprocess_file_path]" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " [--enable-local-cam-capture] [--enable-tracker] [--enable-ai-tracker] [--disable-de-camera] [--execute script_path] <camera_index> [postprocess_file_path]" << std::endl;
         return 1;
     }
     virtualCameraIndex = std::stoi(argv[optind]);
@@ -293,7 +368,28 @@ int main(int argc, char *argv[])
         std::cout << "Skipping camera pipeline (not enabled)." << std::endl;
     }
 
-    // Step 4: Start tracking module (if enabled) after 15 seconds
+    // Step 4: Start any specified scripts
+    for (const auto &script : scripts_to_execute)
+    {
+        std::cout << "Starting script: " << script << "..." << std::endl;
+        pid_t script_pid = startScript(script);
+        if (script_pid == -1)
+        {
+            std::cerr << "CRITICAL: Failed to start script: " << script << ". Exiting." << std::endl;
+            stopAllChildren();
+            return 1;
+        }
+        else if (script_pid == 0)
+        {
+            std::cout << "Script " << script << " failed to start, but continuing with other modules if enabled." << std::endl;
+        }
+        else
+        {
+            script_pids.push_back(script_pid);
+        }
+    }
+
+    // Step 5: Start tracking module (if enabled) after 15 seconds
     if (enable_tracker)
     {
         std::this_thread::sleep_for(std::chrono::seconds(15));
@@ -307,7 +403,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    // Step 5: Start AI tracking module (if enabled) after 5 seconds
+    // Step 6: Start AI tracking module (if enabled) after 5 seconds
     if (enable_ai_tracker)
     {
         std::this_thread::sleep_for(std::chrono::seconds(5));
@@ -321,7 +417,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    // Step 6: Start de_camera module (if enabled) after 15 seconds
+    // Step 7: Start de_camera module (if enabled) after 15 seconds
     if (enable_de_camera)
     {
         std::this_thread::sleep_for(std::chrono::seconds(15));

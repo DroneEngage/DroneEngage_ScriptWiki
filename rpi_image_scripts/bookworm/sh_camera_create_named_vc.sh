@@ -11,10 +11,10 @@ BLUE='\033[1;34m'
 NC='\033[0m' # No Color
 
 # --- Configuration ---
-NUM_DEVICES=3
-VIDEO_NR="1,2,3"
-CARD_LABELS="DE-CAM1,DE-CAM2,DE-CAM3"
-EXCLUSIVE_CAPS="1,1,1"
+NUM_DEVICES=5
+VIDEO_NR="1,2,3,4,5"
+CARD_LABELS="DE-CAM1,DE-CAM2,DE-TRK,DE-RPI,DE-THERMAL"
+EXCLUSIVE_CAPS="1,1,1,1,1"
 
 # Check if v4l2loopback is already loaded
 if ! lsmod | grep -q v4l2loopback; then

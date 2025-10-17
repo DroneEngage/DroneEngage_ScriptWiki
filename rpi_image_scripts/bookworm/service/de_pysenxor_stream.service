@@ -1,0 +1,23 @@
+[Unit]
+Description=Drone Engage Camera with Initialization of rpicamera-vid & thermal if exists pipeline Ver 2.1
+After=network.target multi-user.target
+Documentation=https://droneengage.com
+
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/
+ExecStart=/home/pi/scripts/wrapper/camera_manager_wrapper -c 1 -e "/home/pi/scripts/sh_camera_senxor_thermal_run_on_vc.sh"
+Restart=on-failure
+RestartSec=5s # Wait 5 seconds before attempting a restart
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=camera_wrapper
+
+# You might need to adjust user/group if camera access is restricted
+# User=pi
+# Group=video
+
+[Install]
+WantedBy=multi-user.target

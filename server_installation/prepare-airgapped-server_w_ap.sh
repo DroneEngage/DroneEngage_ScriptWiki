@@ -6,7 +6,7 @@
 # Author: Mohammad Hefny
 # Repository: https://github.com/DroneEngage/DroneEngage_ScriptWiki
 
-SCRIPT_VERSION='4.5.2'
+SCRIPT_VERSION='4.5.4'
 
 ACTIVATE_AP=FALSE
 AP_SSID='DE_SERVER'
@@ -379,9 +379,29 @@ fi
 echo -e $BLUE "installing nodejs modules" $NC
 pushd $HOME/droneengage_webclient
 
+echo -e $BLUE "creating ecosystem.config.js" $NC
+touch $HOME/droneengage_webclient/ecosystem.config.js
+cat > $HOME/droneengage_webclient/ecosystem.config.js <<'EOL'
+const path = require('path');
+module.exports = {
+  apps: [
+    {
+      name: 'droneengage-web',
+      script: 'npx',
+      args: `serve -s ${path.join(__dirname, 'build')} -p 8001 --ssl-cert /home/pi/ssl_local/ssl_airgap/domain.crt --ssl-key /home/pi/ssl_local/ssl_airgap/domain.key`,
+      interpreter: 'none',
+      env: {
+        NODE_ENV: 'production',
+      },
+    },
+  ],
+};
+EOL
+
+
 echo -e $BLUE "register as a service in pm2" $NC
-sudo pm2 delete webclient 2>/dev/null
-sudo pm2 start http-server -n webclient -- build -p 8001 --ssl --cert $HOME/ssl_local/ssl_airgap/domain.crt --key $HOME/ssl_local/ssl_airgap/domain.key
+sudo pm2 delete droneengage-web 2>/dev/null
+sudo pm2 start ecosystem.config.js
 sudo pm2 save
 popd
 
@@ -389,7 +409,7 @@ popd
 
 ########################################
 # Information
-echo -e "${YELLOW}Please register $HOME/ssl_local/DroneEngage_Provider_CA/root.crt in your browser as a trusted Authority.${NC}"
+echo -e "${YELLOW}Please register $HOME/ssl_local/ssl_airgap/root.crt in your browser as a trusted Authority.${NC}"
 echo -e "${YELLOW}Please check this video: https://youtu.be/R1BedRTxuuY?si=s46PWwH1Ir94havS&t=621 for support.${NC}"
 
 

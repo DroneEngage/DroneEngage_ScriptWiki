@@ -45,7 +45,7 @@ fi
 echo -e "${YELLOW}Checking for Raspberry Pi camera...${NC}"
 if ! ${RPICAM_HELLO} --list-cameras | grep -qi "available cameras"; then
     echo -e "${RED}No Raspberry Pi camera detected. Skipping camera pipeline.${NC}"
-    exit 2 # Exit with status 2 to indicate no RPI camera
+    exit 3 # Exit with status 2 to indicate no RPI camera
 fi
 echo -e "${GREEN}Raspberry Pi camera detected. Proceeding with pipeline setup...${NC}"
 

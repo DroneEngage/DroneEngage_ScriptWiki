@@ -121,7 +121,7 @@ pid_t startScript(const std::string &scriptPath)
  */
 pid_t startCameraPipeline(const std::string &postProcessFile)
 {
-    std::string cameraCmd = "/home/pi/scripts/sh_camera_run_rpi_camera.sh " ;
+    std::string cameraCmd = "/home/pi/scripts/sh_camera_run_rpi_camera.sh ";
     if (!postProcessFile.empty())
     {
         cameraCmd += " \"" + postProcessFile + "\"";
@@ -135,7 +135,7 @@ pid_t startCameraPipeline(const std::string &postProcessFile)
     }
     else if (pid == 0)
     {
-        std::cout << "Calling sh_run_virtual_camera.sh with command: " << cameraCmd << std::endl;
+        std::cout << "Calling sh_camera_run_rpi_camera.sh with command: " << cameraCmd << std::endl;
         execlp("sh", "sh", "-c", cameraCmd.c_str(), (char *)NULL);
         perror("execlp for camera pipeline failed");
         _exit(127);
@@ -158,7 +158,7 @@ pid_t startCameraPipeline(const std::string &postProcessFile)
         if (WIFEXITED(status))
         {
             int exit_code = WEXITSTATUS(status);
-            if (exit_code == 2)
+            if (exit_code == 3) 
             {
                 std::cout << "No Raspberry Pi camera detected. Skipping camera pipeline." << std::endl;
                 return 0; // Indicate no RPI camera, but not a failure

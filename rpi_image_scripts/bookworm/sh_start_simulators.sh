@@ -47,6 +47,9 @@ log_message "${BLUE}" "Starting de_comm instance 1..."
 DE_COMM_PID1=$!
 log_message "${GREEN}" "de_comm instance 1 started (PID: $DE_COMM_PID1)"
 
+### WAIT so that Drone GENERATE Different PartyIDs
+sleep 1
+
 log_message "${BLUE}" "Starting de_mavlink instance 1..."
 /home/pi/drone_engage/de_mavlink/de_ardupilot \
     --config /home/pi/simulator/sim_de_mavlink_instances/de_mavlink.1.config.module.json \
@@ -64,12 +67,18 @@ log_message "${BLUE}" "Starting de_comm instance 2..."
 DE_COMM_PID2=$!
 log_message "${GREEN}" "de_comm instance 2 started (PID: $DE_COMM_PID2)"
 
+### WAIT so that Drone GENERATE Different PartyIDs
+sleep 1
+
 log_message "${BLUE}" "Starting de_mavlink instance 2..."
 /home/pi/drone_engage/de_mavlink/de_ardupilot \
     --config /home/pi/simulator/sim_de_mavlink_instances/de_mavlink.2.config.module.json \
     --bconfig /home/pi/simulator/sim_de_mavlink_instances/de_mavlink.2.bconfig.module.local > /dev/null 2>&1 &
 DE_MAVLINK_PID2=$!
 log_message "${GREEN}" "de_mavlink instance 2 started (PID: $DE_MAVLINK_PID2)"
+
+### WAIT so that Drone GENERATE Different PartyIDs
+sleep 1
 
 # Staring SITL
 log_message "${YELLOW}" "Waiting to start SITL"

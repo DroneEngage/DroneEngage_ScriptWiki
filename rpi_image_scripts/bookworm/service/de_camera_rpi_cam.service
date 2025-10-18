@@ -7,7 +7,7 @@ Documentation=https://droneengage.com
 [Service]
 Type=simple
 WorkingDirectory=/home/pi/
-ExecStart=/home/pi/scripts/wrapper/camera_manager_wrapper -c 1
+ExecStart=/home/pi/scripts/wrapper/camera_manager_wrapper -c 
 Restart=on-failure
 RestartSec=5s # Wait 5 seconds before attempting a restart
 

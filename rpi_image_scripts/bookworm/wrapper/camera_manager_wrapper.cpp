@@ -116,13 +116,12 @@ pid_t startScript(const std::string &scriptPath)
 
 /**
  * @brief Forks a new process to start the rpicam-vid | ffmpeg pipeline.
- * @param cameraIndex The index of the virtual camera to stream to.
  * @param postProcessFile Optional path to a post-processing file.
  * @return The process ID (PID) of the child process, -1 on failure, or 0 if no RPI camera is detected.
  */
-pid_t startCameraPipeline(int cameraIndex, const std::string &postProcessFile)
+pid_t startCameraPipeline(const std::string &postProcessFile)
 {
-    std::string cameraCmd = "/home/pi/scripts/sh_camera_run_on_vc.sh " + std::to_string(cameraIndex);
+    std::string cameraCmd = "/home/pi/scripts/sh_camera_run_rpi_camera.sh " ;
     if (!postProcessFile.empty())
     {
         cameraCmd += " \"" + postProcessFile + "\"";
@@ -275,7 +274,6 @@ int main(int argc, char *argv[])
     bool enable_tracker = false;
     bool enable_ai_tracker = false;
     bool enable_de_camera = true; // Enabled by default
-    int virtualCameraIndex = 0;
     std::string postProcessFilePath;
     std::vector<std::string> scripts_to_execute; // To store script paths
 
@@ -288,10 +286,11 @@ int main(int argc, char *argv[])
         {"enable-ai-tracker", no_argument, 0, 'a'},
         {"disable-de-camera", no_argument, 0, 'd'},
         {"execute", required_argument, 0, 'e'},
+        {"version", no_argument, 0, 'v'},
         {0, 0, 0, 0}};
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "ctade:", long_options, nullptr)) != -1)
+    while ((opt = getopt_long(argc, argv, "ctade:v", long_options, nullptr)) != -1)
     {
         switch (opt)
         {
@@ -308,28 +307,30 @@ int main(int argc, char *argv[])
             enable_de_camera = false;
             break;
         case 'e':
-            scripts_to_execute.push_back(optarg);
+            if (optarg && optarg[0] != '\0') // Check for non-null and non-empty
+                scripts_to_execute.push_back(optarg);
+            else
+            {
+                std::cerr << "Error: No valid script path provided for --execute option." << std::endl;
+                return 1;
+            }
             break;
+        case 'v':
+            std::cout << "Version: " << VERSION_APP << std::endl;
+            return 0;
         default:
-            std::cerr << "Usage: " << argv[0] << " [--enable-local-cam-capture] [--enable-tracker] [--enable-ai-tracker] [--disable-de-camera] [--execute script_path] <camera_index> [postprocess_file_path]" << std::endl;
-            std::cerr << "Example: " << argv[0] << " --enable-local-cam-capture --enable-tracker 1" << std::endl;
-            std::cerr << "Example: " << argv[0] << " --enable-ai-tracker 1 \"/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json\"" << std::endl;
-            std::cerr << "Example: " << argv[0] << " --enable-ai-tracker --execute /path/to/script.sh " << std::endl;
+            std::cerr << "Usage: " << argv[0] << " [--enable-local-cam-capture] [--enable-tracker] [--enable-ai-tracker] [--disable-de-camera] [--execute script_path] [postprocess_file_path]" << std::endl;
+            std::cerr << "Example: " << argv[0] << " --enable-local-cam-capture --enable-tracker" << std::endl;
+            std::cerr << "Example: " << argv[0] << " --enable-ai-tracker \"/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json\"" << std::endl;
+            std::cerr << "Example: " << argv[0] << " --enable-local-cam-capture --execute /path/to/script.sh" << std::endl;
             return 1;
         }
     }
 
-    // Parse positional arguments
-    if (optind >= argc)
+    // Parse optional postprocess_file_path
+    if (optind < argc && argv[optind] != nullptr && argv[optind][0] != '\0')
     {
-        std::cerr << "Missing camera_index argument." << std::endl;
-        std::cerr << "Usage: " << argv[0] << " [--enable-local-cam-capture] [--enable-tracker] [--enable-ai-tracker] [--disable-de-camera] [--execute script_path] <camera_index> [postprocess_file_path]" << std::endl;
-        return 1;
-    }
-    virtualCameraIndex = std::stoi(argv[optind]);
-    if (optind + 1 < argc)
-    {
-        postProcessFilePath = argv[optind + 1];
+        postProcessFilePath = argv[optind];
     }
 
     signal(SIGINT, signal_handler);
@@ -350,7 +351,7 @@ int main(int argc, char *argv[])
     if (enable_local_cam_capture)
     {
         std::cout << "Starting camera pipeline..." << std::endl;
-        camera_pid = startCameraPipeline(virtualCameraIndex, postProcessFilePath);
+        camera_pid = startCameraPipeline(postProcessFilePath);
         if (camera_pid == -1)
         {
             std::cerr << "CRITICAL: Failed to start camera pipeline. Exiting." << std::endl;
@@ -359,7 +360,7 @@ int main(int argc, char *argv[])
         }
         else if (camera_pid == 0)
         {
-            std::cout << "No RPI camera detected, but continuing with other modules if enabled." << std::endl;
+            std::cout << "No Raspberry Pi camera detected, but continuing with other modules if enabled." << std::endl;
             camera_pid = -1; // Reset camera_pid to avoid stopping a non-existent process
         }
     }
@@ -432,7 +433,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        std::cout << "SKIPING de_camera64.so..." << std::endl;
+        std::cout << "SKIPPING de_camera64.so..." << std::endl;
     }
 
     // Main monitoring loop: Wait for any child process to crash

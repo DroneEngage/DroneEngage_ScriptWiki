@@ -6,7 +6,7 @@
 # Author: Mohammad Hefny
 # Repository: https://github.com/DroneEngage/DroneEngage_ScriptWiki
 
-SCRIPT_VERSION='4.5.4'
+SCRIPT_VERSION='4.5.5'
 
 ACTIVATE_AP=FALSE
 AP_SSID='DE_SERVER'
@@ -344,8 +344,8 @@ if [[ ! -d droneengage_server ]]; then
   exit 1
 fi
 
-echo -e $BLUE "installing nodejs modules" $NC
 pushd $HOME/droneengage_server
+echo -e $BLUE "installing nodejs modules" $NC
 npm install --fetch-timeout=9999999
 if [[ $? -ne 0 ]]; then
   echo -e "${RED}Failed to install Node.js modules. Exiting.${NC}"
@@ -376,7 +376,6 @@ if [[ ! -d droneengage_webclient ]]; then
   exit 1
 fi
 
-echo -e $BLUE "installing nodejs modules" $NC
 pushd $HOME/droneengage_webclient
 
 echo -e $BLUE "creating ecosystem.config.js" $NC
@@ -418,22 +417,31 @@ echo -e "${GREEN}Create Access Point${NC}"
 echo -e "${YELLOW}Would you like to create a Wi-Fi access point for your server? (y/n)${NC}"
 read -p "Enter your choice: " create_ap
 if [[ "$create_ap" =~ ^[Yy]$ ]]; then
-  echo -e "${GREEN}Setting up access point...${NC}"
-  sudo systemctl stop dnsmasq
-  sudo systemctl disable dnsmasq
-  sudo systemctl stop hostapd
-  sudo systemctl disable hostapd
-  sudo nmcli con delete hotspot 2>/dev/null
-  sudo nmcli con add type wifi ifname wlan0 con-name hotspot ssid "${AP_SSID}" autoconnect yes
-  sudo nmcli con modify hotspot wifi-sec.key-mgmt wpa-psk
-  sudo nmcli con modify hotspot wifi-sec.psk "${AP_PWD}"
-  sudo nmcli con modify hotspot 802-11-wireless.mode ap 802-11-wireless.band bg
-  sudo nmcli con modify hotspot wifi-sec.proto rsn  # Explicitly use WPA2 (RSN)
-  sudo nmcli con modify hotspot wifi-sec.pairwise ccmp  # Use CCMP (AES) encryption
-  sudo nmcli con modify hotspot wifi-sec.group ccmp
-  sudo nmcli con modify hotspot ipv4.addresses "${AP_IP}"
-  sudo nmcli con modify hotspot 802-11-wireless-security.wps disabled
-  sudo nmcli con up hotspot
+echo -e "${GREEN}Setting up access point...${NC}"
+# Use '|| true' and '2>/dev/null' to prevent errors if services don't exist
+sudo systemctl stop dnsmasq 2>/dev/null || true
+sudo systemctl disable dnsmasq 2>/dev/null || true
+sudo systemctl stop hostapd 2>/dev/null || true
+sudo systemctl disable hostapd 2>/dev/null || true
+
+sudo nmcli con delete hotspot 2>/dev/null
+sudo nmcli con add type wifi ifname wlan0 con-name hotspot ssid "${AP_SSID}" autoconnect yes
+sudo nmcli con modify hotspot wifi-sec.key-mgmt wpa-psk
+sudo nmcli con modify hotspot wifi-sec.psk "${AP_PWD}"
+sudo nmcli con modify hotspot 802-11-wireless.mode ap 802-11-wireless.band bg
+sudo nmcli con modify hotspot wifi-sec.proto rsn
+sudo nmcli con modify hotspot wifi-sec.pairwise ccmp
+sudo nmcli con modify hotspot wifi-sec.group ccmp
+
+# FIX 1: Use the AP_IP variable directly since it already contains "/24"
+sudo nmcli con modify hotspot ipv4.addresses "${AP_IP}"
+# FIX 2: IMPORTANT - Set the method to 'shared' so NetworkManager runs DHCP
+sudo nmcli con modify hotspot ipv4.method shared
+sudo nmcli con modify hotspot ipv6.method ignore # Good practice for a simple AP setup
+
+sudo nmcli con modify hotspot 802-11-wireless-security.wps disabled
+
+sudo nmcli con up hotspot
 else
   echo -e "${YELLOW}Skipping access point setup.${NC}"
 fi

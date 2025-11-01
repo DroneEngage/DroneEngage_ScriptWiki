@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Air Gapped Server Setup Script for Raspberry Pi 4 (Raspbian Bullseye)
+# Air Gapped Server Setup Script for Raspberry Pi 4 (Raspbian BookWorm)
 # Description: This script automates the setup of an air-gapped server for DroneEngage.
-# Prerequisites: Raspberry Pi 4, Raspbian Bullseye, sudo privileges.
+# Prerequisites: Raspberry Pi 4, Raspbian BookWorm, sudo privileges.
 # Author: Mohammad Hefny
 # Repository: https://github.com/DroneEngage/DroneEngage_ScriptWiki
 

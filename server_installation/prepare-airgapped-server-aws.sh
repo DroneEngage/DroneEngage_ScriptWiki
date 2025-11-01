@@ -46,7 +46,7 @@ validate_domain() {
 # Prompt the user for the domain name
 while true; do
   read -p "$(echo -e "${GREEN}Enter the domain name (default: ${YELLOW}$DEFAULT_DOMAIN${GREEN}, press Enter to accept): ${NC}")" DOMAIN
-  DOMAIN_NAME=${DOMAIN_NAME:-$DEFAULT_DOMAIN}
+  DOMAIN_NAME=${DOMAIN:-$DEFAULT_DOMAIN}
   echo "$(echo -e "${GREEN}You chose: ${YELLOW}$DOMAIN_NAME"${NC})"
   
   # Validate the domain syntax
@@ -72,21 +72,21 @@ sudo chmod -R 755 /etc/letsencrypt/live/
 
 echo -e $BLUE "Create renew_ssl.sh file for auto renewal" $NC
 
-touch /home/$USER/renew_ssl.sh
-cat > /home/ubuntu/renew_ssl.sh <<EOL
+touch "$HOME/renew_ssl.sh"
+cat > "$HOME/renew_ssl.sh" <<EOL
 #!/bin/bash
 sudo certbot certonly -d ${DOMAIN_NAME} --standalone --force-renewal
 EOL
 
-sudo chmod +x renew_ssl.sh
+sudo chmod +x "$HOME/renew_ssl.sh"
 
 echo -e $BLUE "Add a monthly task in crontab" $NC
 
-sudo echo "@monthly  /home/$USER/renew_ssl.sh >/dev/null 2>&1" | sudo crontab -
+sudo sh -c "echo '@monthly  $HOME/renew_ssl.sh >/dev/null 2>&1' | crontab -"
 
 echo -e $BLUE "Create SSL folder" $NC
 
-sudo ln -s  /etc/letsencrypt/live/$DOMAIN_NAME /home/$USER/ssl 
+sudo ln -sfn /etc/letsencrypt/live/$DOMAIN_NAME "$HOME/ssl" 
 
 read -p "Press any key to proceed " k
 
@@ -97,7 +97,7 @@ echo -e $GREEN "Install CoTurn" $NC
 sudo apt install -y coturn
 
 echo -e $BLUE "Run CoTurn as a Service" $NC
-sudo mv /etc/turnserver.conf  /etc/turnserver.conf.old
+sudo mv /etc/turnserver.conf  /etc/turnserver.conf.old 2>/dev/null || true
 
 sudo touch /etc/turnserver.conf 
 sudo bash -c "cat > /etc/turnserver.conf  <<EOL
@@ -115,26 +115,48 @@ user=${TURN_PWD}
 EOL
 "
 
+sudo systemctl enable coturn
+sudo systemctl restart coturn
+
 read -p "Press any key to proceed " k
 
 
 ###################################### NODEJS 
 
+NODE_MAJOR=22
+# Check if Node.js is installed and meets the required major version
 if command -v node &>/dev/null; then
-  echo -e "${GREEN}Node.js is already installed. Skipping installation.${NC}"
+  INSTALLED_VERSION=$(node -v | cut -d. -f1 | tr -d 'v')
+  if [[ "$INSTALLED_VERSION" -ge "$NODE_MAJOR" ]]; then
+    echo -e "${GREEN}Node.js version $INSTALLED_VERSION is installed. Skipping installation.${NC}"
+  else
+    echo -e "${YELLOW}Node.js version $INSTALLED_VERSION is installed, but version $NODE_MAJOR is required. Updating...${NC}"
+    sudo apt-get remove -y nodejs
+    sudo apt-get purge -y nodejs
+    sudo rm -f /etc/apt/sources.list.d/nodesource.list
+    sudo apt-get update
+    sudo apt-get install -y ca-certificates curl gnupg
+    sudo mkdir -p /etc/apt/keyrings
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+    sudo apt-get update
+    sudo apt-get install nodejs -y
+    sudo npm install -g npm@latest
+  fi
 else
-  echo -e $GREEN "Install NodeJS" $NC
+  echo -e "${GREEN}Installing Node.js version $NODE_MAJOR...${NC}"
   sudo apt-get update
   sudo apt-get install -y ca-certificates curl gnupg
   sudo mkdir -p /etc/apt/keyrings
   curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-  NODE_MAJOR=18
   echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
   sudo apt-get update
   sudo apt-get install nodejs -y
   sudo npm install -g npm@latest
 fi
+echo -e "${GREEN}Node.js version installed:${NC}"
 node -v
+echo -e "${GREEN}npm version installed:${NC}"
 npm -v
 
 read -p "Press any key to proceed " k
@@ -149,7 +171,7 @@ if npm list -g pm2 &>/dev/null; then
 else
   # Install pm2 globally
   echo -e $GREEN "Install PM2" $NC
-  sudo npm install -g pm2 -timeout=9999999
+  sudo npm install -g pm2 --fetch-timeout=9999999
   sudo pm2 startup
   sudo pm2 save
 fi
@@ -168,7 +190,8 @@ fi
 
 ###################################### NODE-HTTP-SERVER
 echo -e $GREEN "Install Http-Server" $NC
-sudo npm install http-server -g -timeout=9999999
+sudo npm install http-server -g --fetch-timeout=9999999
+sudo npm install serve -g --fetch-timeout=9999999
 
 
 ###################################### Local Maps
@@ -180,7 +203,7 @@ mkdir ~/map ~/map/cachedMap
 pushd  ~/map/cachedMap
 echo -e $YELLOW "Put cached IMAGES at ${PWD}" $NC
 sudo pm2 startup
-sudo pm2 start http-server  -n map_server -x  -- ~/map/cachedMap  -p 88 -C ~/ssl/localssl.crt -K ~/ssl/localssl.key  --ssl
+sudo pm2 start http-server  -n map_server -x  -- ~/map/cachedMap  -p 88 -C "$HOME/ssl/fullchain.pem" -K "$HOME/ssl/privkey.pem"  --ssl
 sudo pm2 save
 sudo pm2 list
 echo -e $YELLOW "Images are exposed as https://${DOMAIN_NAME}:88/." $NC
@@ -194,16 +217,16 @@ read -p "Press any key to proceed " k
 echo -e $GREEN "DroneExtend-Authenticator" $NC
 echo -e $BLUE "downloading release code" $NC
 cd ~
-git clone -b release --single-branch ${REPOSITORY_AUTH} --depth 1 ./de_authenticator
+git clone -b release --single-branch ${REPOSITORY_AUTH} --depth 1 ./droneengage_authenticator
 
-pushd ~/de_authenticator
+pushd ~/droneengage_authenticator
 echo -e $BLUE "installing nodejs modules" $NC
-npm install -timeout=9999999 
+npm install --fetch-timeout=9999999 
 echo -e $BLUE "linking ssl folder" $NC
-ln -s ~/ssl ./ssl
+ln -sfn "$HOME/ssl" ./ssl
 echo -e $BLUE "register as a service in pm2" $NC
-sudo pm2 delete de_auth
-sudo pm2 start server.js  -n de_auth
+sudo pm2 delete droneengage_auth 2>/dev/null
+sudo pm2 start server.js  -n droneengage_auth
 sudo pm2 save
 popd
 
@@ -216,18 +239,18 @@ popd
 echo -e $GREEN "DroneExtend-Server" $NC
 echo -e $BLUE "downloading release code" $NC
 cd ~
-git clone -b release --single-branch ${REPOSITORY_SERVER} --depth 1 ./de_server
+git clone -b release --single-branch ${REPOSITORY_SERVER} --depth 1 ./droneengage_server
 
-pushd ~/de_server
+pushd ~/droneengage_server
 echo -e $BLUE "installing nodejs modules" $NC
-npm install -timeout=9999999
+npm install --fetch-timeout=9999999
 cd server
 echo -e $BLUE "linking ssl folder" $NC
-ln -s ~/ssl ./ssl
+ln -sfn "$HOME/ssl" ./ssl
 cd ..
 echo -e $BLUE "register as a service in pm2" $NC
-sudo pm2 delete de_server
-sudo pm2 start server.js  -n de_server
+sudo pm2 delete droneengage_server 2>/dev/null
+sudo pm2 start server.js  -n droneengage_server
 sudo pm2 save
 popd
 
@@ -240,17 +263,36 @@ echo -e $GREEN "DroneEngage-Webclient" $NC
 echo -e $BLUE "downloading release code" $NC
 cd ~
 
-git clone -b release --single-branch ${REPOSITORY_WEBCLIENT} --depth 1 ./de_webclient
+git clone -b release --single-branch ${REPOSITORY_WEBCLIENT} --depth 1 ./droneengage_webclient
 
 echo -e $BLUE "installing nodejs modules" $NC
-pushd ~/de_webclient
+pushd ~/droneengage_webclient
 
 echo -e $BLUE "linking ssl folder" $NC
-ln -s ~/ssl ./ssl
+ln -sfn "$HOME/ssl" ./ssl
+
+echo -e $BLUE "creating ecosystem.config.js" $NC
+touch $HOME/droneengage_webclient/ecosystem.config.js
+cat > $HOME/droneengage_webclient/ecosystem.config.js <<'EOL'
+const path = require('path');
+module.exports = {
+  apps: [
+    {
+      name: 'droneengage-web',
+      script: 'npx',
+      args: `serve -s ${path.join(__dirname, 'build')} -p 8001 --ssl-cert ${process.env.HOME}/ssl/fullchain.pem --ssl-key ${process.env.HOME}/ssl/privkey.pem`,
+      interpreter: 'none',
+      env: {
+        NODE_ENV: 'production',
+      },
+    },
+  ],
+};
+EOL
+
 echo -e $BLUE "register as a service in pm2" $NC
-sudo pm2 delete webclient
-SERVE_ROOT=$(npm root -g)
-sudo pm2 start $SERVE_ROOT/serve/build/main.js  -n webclient -- -s build -l 8001 --ssl-cert $HOME/ssl/fullchain.pem --ssl-key $HOME/ssl/privkey.pem
+sudo pm2 delete droneengage-web 2>/dev/null
+sudo pm2 start ecosystem.config.js
 sudo pm2 save
 popd
 

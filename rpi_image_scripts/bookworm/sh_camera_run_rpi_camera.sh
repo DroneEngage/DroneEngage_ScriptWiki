@@ -1,11 +1,55 @@
 #!/bin/bash
 
-# Script: sh_run_virtual_camera.sh
-# Usage: sh_run_virtual_camera.sh [postprocess_file_path]
-# Example:
-#   sh_run_virtual_camera.sh "/path/to/my/model.json" (to stream to DE-RPI with a specific post-processing file)
+# ============================================================================
+# Name:        sh_camera_run_rpi_camera.sh
+# Synopsis:    sh_camera_run_rpi_camera.sh [postprocess_file_path]
 #
-# This script is modified to no longer accept <camera_index> as an argument.
+# Description:
+#   Streams frames from the Raspberry Pi camera using rpicam-vid and forwards
+#   them via FFmpeg to a v4l2loopback virtual camera whose card label matches
+#   the configured prefix (default: "DE-RPI"). Optionally attaches an
+#   rpicam post-processing pipeline JSON (e.g., imx500 model postprocess file).
+#
+# Arguments:
+#   postprocess_file_path (optional)
+#       Path to a post-processing JSON file consumed by rpicam-vid via
+#       --post-process-file. If omitted, the camera stream runs without
+#       post-processing.
+#
+# Behavior:
+#   - Verifies a Raspberry Pi camera is available using rpicam-hello.
+#   - Locates a v4l2loopback device whose name/card equals the CAM_LABEL_PREFIX
+#     (default: "DE-RPI").
+#   - Runs rpicam-vid with configured width/height/framerate and yuv420 output,
+#     piping rawvideo into FFmpeg which publishes to the target /dev/videoX.
+#
+# Requirements:
+#   - rpicam-vid and rpicam-hello installed and accessible at the paths below.
+#   - v4l2loopback kernel module loaded with a device labeled as CAM_LABEL_PREFIX.
+#   - ffmpeg installed.
+#
+# Configuration:
+#   - CAM_LABEL_PREFIX: card label to match for the virtual camera.
+#   - RPICAM_VID, RPICAM_HELLO: paths to rpicam binaries.
+#   - VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_FRAMERATE: stream settings.
+#
+# Exit Codes:
+#   1  Usage error or virtual camera not found.
+#   3  No Raspberry Pi camera detected.
+#
+# Examples:
+#   # Run without post-processing (stream to DE-RPI virtual camera)
+#   sh_camera_run_rpi_camera.sh
+#
+#   # Run with a specific post-processing file
+#   sh_camera_run_rpi_camera.sh \
+#     "/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json"
+#
+# Notes:
+#   - The script no longer accepts a camera index; it auto-discovers the
+#     v4l2loopback device by matching CAM_LABEL_PREFIX.
+#   - Ensure v4l2loopback was created with card_label="DE-RPI" (or your prefix).
+# ============================================================================
 
 # Color definitions for terminal output
 RED='\033[1;31m'
@@ -25,9 +69,12 @@ RPICAM_VID="/home/pi/rpicam-apps/build/apps/rpicam-vid"
 RPICAM_HELLO="/home/pi/rpicam-apps/build/apps/rpicam-hello"
 
 # FFmpeg pipeline parameters
-VIDEO_WIDTH=640
-VIDEO_HEIGHT=480
-VIDEO_FRAMERATE=20
+#VIDEO_WIDTH=640
+#VIDEO_HEIGHT=480
+#VIDEO_FRAMERATE=20
+VIDEO_WIDTH=1920
+VIDEO_HEIGHT=1080
+VIDEO_FRAMERATE=15
 
 
 # --- Script Logic ---

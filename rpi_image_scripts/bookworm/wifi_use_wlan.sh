@@ -39,10 +39,13 @@ sleep 3 # Give it a moment to rescan
 
 # --- 4. Add the new Wi-Fi connection ---
 echo "5. Adding new Wi-Fi connection profile for '$SSID'..."
-sudo nmcli con add type wifi ifname wlan0 con-name "$CONNECTION_NAME" ssid "$SSID" autoconnect yes
-sudo nmcli con modify "$CONNECTION_NAME" wifi-sec.key-mgmt wpa-psk
-sudo nmcli con modify "$CONNECTION_NAME" wifi-sec.psk "$PASSWORD"
-sudo nmcli con modify "$CONNECTION_NAME" ipv4.method auto ipv6.method auto # Use DHCP
+sudo nmcli dev wifi connect "$SSID" password "$PASSWORD" ifname wlan0 name "$CONNECTION_NAME" || {
+  sudo nmcli con add type wifi ifname wlan0 con-name "$CONNECTION_NAME" ssid "$SSID" autoconnect yes
+  sudo nmcli con modify "$CONNECTION_NAME" 802-11-wireless-security.key-mgmt wpa-psk
+  sudo nmcli con modify "$CONNECTION_NAME" 802-11-wireless-security.psk "$PASSWORD"
+  sudo nmcli con modify "$CONNECTION_NAME" 802-11-wireless-security.psk-flags 0
+  sudo nmcli con modify "$CONNECTION_NAME" ipv4.method auto ipv6.method auto
+}
 
 # --- 5. Activate the new connection ---
 echo "6. Activating connection '$CONNECTION_NAME'..."

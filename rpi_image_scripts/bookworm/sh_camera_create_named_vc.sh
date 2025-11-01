@@ -30,4 +30,8 @@ else
 fi
 
 echo -e "${BLUE}Virtual video devices created/verified:${NC}"
+
+#v4l2-ctl --list-devices
+
 ls --color=always /sys/devices/virtual/video4linux/
+

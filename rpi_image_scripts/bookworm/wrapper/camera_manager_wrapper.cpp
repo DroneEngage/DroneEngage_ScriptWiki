@@ -19,7 +19,7 @@
 #include <csignal>     // For SIGTERM, SIGINT
 #include <getopt.h>    // For parsing command-line options
 
-#define VERSION_APP "3.0.0"
+#define VERSION_APP "3.0.1"
 
 // Global PID variables to track child processes
 pid_t camera_pid = -1;
@@ -270,7 +270,7 @@ void signal_handler(int signal_num)
 int main(int argc, char *argv[])
 {
     // Command-line options
-    bool enable_local_cam_capture = false;
+    bool enable_rpi_cam_capture = false;
     bool enable_tracker = false;
     bool enable_ai_tracker = false;
     bool enable_de_camera = true; // Enabled by default
@@ -281,7 +281,7 @@ int main(int argc, char *argv[])
 
     // Parse command-line options
     static struct option long_options[] = {
-        {"enable-local-cam-capture", no_argument, 0, 'c'},
+        {"enable-rpi-cam-capture", no_argument, 0, 'c'},
         {"enable-tracker", no_argument, 0, 't'},
         {"enable-ai-tracker", no_argument, 0, 'a'},
         {"disable-de-camera", no_argument, 0, 'd'},
@@ -295,7 +295,7 @@ int main(int argc, char *argv[])
         switch (opt)
         {
         case 'c':
-            enable_local_cam_capture = true;
+            enable_rpi_cam_capture = true;
             break;
         case 't':
             enable_tracker = true;
@@ -319,10 +319,10 @@ int main(int argc, char *argv[])
             std::cout << "Version: " << VERSION_APP << std::endl;
             return 0;
         default:
-            std::cerr << "Usage: " << argv[0] << " [--enable-local-cam-capture] [--enable-tracker] [--enable-ai-tracker] [--disable-de-camera] [--execute script_path] [postprocess_file_path]" << std::endl;
-            std::cerr << "Example: " << argv[0] << " --enable-local-cam-capture --enable-tracker" << std::endl;
+            std::cerr << "Usage: " << argv[0] << " [--enable-rpi-cam-capture] [--enable-tracker] [--enable-ai-tracker] [--disable-de-camera] [--execute script_path] [postprocess_file_path]" << std::endl;
+            std::cerr << "Example: " << argv[0] << " --enable-rpi-cam-capture --enable-tracker" << std::endl;
             std::cerr << "Example: " << argv[0] << " --enable-ai-tracker \"/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json\"" << std::endl;
-            std::cerr << "Example: " << argv[0] << " --enable-local-cam-capture --execute /path/to/script.sh" << std::endl;
+            std::cerr << "Example: " << argv[0] << " --enable-rpi-cam-capture --execute /path/to/script.sh" << std::endl;
             return 1;
         }
     }
@@ -348,7 +348,7 @@ int main(int argc, char *argv[])
     executeCommand("ls /sys/devices/virtual/video4linux/");
 
     // Step 3: Start rpicam-vid | ffmpeg if enabled
-    if (enable_local_cam_capture)
+    if (enable_rpi_cam_capture)
     {
         std::cout << "Starting camera pipeline..." << std::endl;
         camera_pid = startCameraPipeline(postProcessFilePath);

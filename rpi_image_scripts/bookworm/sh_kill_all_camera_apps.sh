@@ -13,7 +13,7 @@ echo -e "${RED}KILLING Camera Related APPs.${NC}"
 
 # Use '--signal 9' or '-s 9' to specify the kill signal
 sudo pkill --signal 9 -f rpicam-vid
-sudo pkill --signal 9 -f de_tracker.so
+sudo pkill --signal 9 -f de_tracker
 sudo pkill --signal 9 -f de_ai_tracker.so
 sudo pkill --signal 9 -f de_camera
 

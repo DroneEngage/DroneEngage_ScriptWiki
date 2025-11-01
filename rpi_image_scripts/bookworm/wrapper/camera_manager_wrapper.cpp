@@ -19,7 +19,7 @@
 #include <csignal>     // For SIGTERM, SIGINT
 #include <getopt.h>    // For parsing command-line options
 
-#define VERSION_APP "3.0.2"
+#define VERSION_APP "3.0.3"
 
 // Global PID variables to track child processes
 pid_t camera_pid = -1;
@@ -36,7 +36,7 @@ const std::string BASE_AI_TRACKER_MODULE_PATH = "/home/pi/drone_engage/de_ai_tra
 // Module-specific paths
 const std::string DE_CAMERA_MODULE = BASE_CAMERA_MODULE_PATH + "de_camera";
 const std::string DE_CAMERA_CONFIG = BASE_CAMERA_MODULE_PATH + "de_camera.config.module.json";
-const std::string TRACKING_MODULE = BASE_TRACKER_MODULE_PATH + "de_tracker.so";
+const std::string TRACKING_MODULE = BASE_TRACKER_MODULE_PATH + "de_tracker";
 const std::string TRACKING_CONFIG = BASE_TRACKER_MODULE_PATH + "de_tracker.config.module.json";
 const std::string AI_TRACKING_MODULE = BASE_AI_TRACKER_MODULE_PATH + "de_ai_tracker.so";
 const std::string AI_TRACKING_CONFIG = BASE_AI_TRACKER_MODULE_PATH + "de_ai_tracker.config.module.json";
@@ -252,7 +252,7 @@ void stopAllChildren()
  */
 void preemptiveKill()
 {
-    std::cout << "Pre-emptively killing any old 'rpicam-vid', 'de_tracker.so', and 'de_camera' processes..." << std::endl;
+    std::cout << "Pre-emptively killing any old 'rpicam-vid', 'de_tracker', and 'de_camera' processes..." << std::endl;
     executeCommand("sudo /home/pi/scripts/sh_kill_all_camera_apps.sh");
     std::this_thread::sleep_for(std::chrono::seconds(2));
 }
@@ -394,11 +394,11 @@ int main(int argc, char *argv[])
     if (enable_tracker)
     {
         std::this_thread::sleep_for(std::chrono::seconds(15));
-        std::cout << "Starting de_tracker.so..." << std::endl;
-        tracking_camera_pid = startModule(TRACKING_MODULE, TRACKING_CONFIG, "de_tracker.so", BASE_TRACKER_MODULE_PATH);
+        std::cout << "Starting de_tracker..." << std::endl;
+        tracking_camera_pid = startModule(TRACKING_MODULE, TRACKING_CONFIG, "de_tracker", BASE_TRACKER_MODULE_PATH);
         if (tracking_camera_pid == -1)
         {
-            std::cerr << "CRITICAL: Failed to start de_tracker.so. Exiting." << std::endl;
+            std::cerr << "CRITICAL: Failed to start de_tracker. Exiting." << std::endl;
             stopAllChildren();
             return 1;
         }

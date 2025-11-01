@@ -68,6 +68,6 @@ cp "$PROJECT_ROOT_DIR"/bin/* "$DEPLOYMENT_TARGET_DIR/"
 # Return to the original directory
 popd
 
-"$DEPLOYMENT_TARGET_DIR"/de_ardupilot
+"$DEPLOYMENT_TARGET_DIR"/de_tracker
 
 echo -e "\n${GREEN}${BOLD}✅ BUILD AND DEPLOYMENT SUCCESSFUL!${NC}"

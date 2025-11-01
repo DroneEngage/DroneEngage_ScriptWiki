@@ -45,7 +45,7 @@ This folder contains helper and management scripts for Raspberry Pi OS (Bookworm
   Simple GStreamer pipeline from `libcamerasrc` to a v4l2 sink device (e.g., `/dev/video3`).
 
 - **sh_kill_all_camera_apps.sh**
-  Force-kills camera-related processes (`rpicam-vid`, `de_*tracker.so`, `de_camera64.so`) and restores terminal settings.
+  Force-kills camera-related processes (`rpicam-vid`, `de_*tracker.so`, `de_camera`) and restores terminal settings.
 
 ## Simulators
 - **sh_start_simulators.sh**

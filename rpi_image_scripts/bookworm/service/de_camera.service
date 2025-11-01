@@ -7,7 +7,7 @@ Documentation=https://droneengage.com
 [Service]
 Type=simple
 WorkingDirectory=/home/pi/drone_engage/de_camera
-ExecStart=/home/pi/drone_engage/de_camera/de_camera64.so -c /home/pi/drone_engage/de_camera/de_camera.config.module.json
+ExecStart=/home/pi/drone_engage/de_camera/de_camera -c /home/pi/drone_engage/de_camera/de_camera.config.module.json
 Restart=on-failure
 RestartSec=5s # Wait 5 seconds before attempting a restart
 

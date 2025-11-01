@@ -19,7 +19,7 @@
 #include <csignal>     // For SIGTERM, SIGINT
 #include <getopt.h>    // For parsing command-line options
 
-#define VERSION_APP "3.0.1"
+#define VERSION_APP "3.0.2"
 
 // Global PID variables to track child processes
 pid_t camera_pid = -1;
@@ -34,7 +34,7 @@ const std::string BASE_TRACKER_MODULE_PATH = "/home/pi/drone_engage/de_tracking/
 const std::string BASE_AI_TRACKER_MODULE_PATH = "/home/pi/drone_engage/de_ai_tracker/";
 
 // Module-specific paths
-const std::string DE_CAMERA_MODULE = BASE_CAMERA_MODULE_PATH + "de_camera64.so";
+const std::string DE_CAMERA_MODULE = BASE_CAMERA_MODULE_PATH + "de_camera";
 const std::string DE_CAMERA_CONFIG = BASE_CAMERA_MODULE_PATH + "de_camera.config.module.json";
 const std::string TRACKING_MODULE = BASE_TRACKER_MODULE_PATH + "de_tracker.so";
 const std::string TRACKING_CONFIG = BASE_TRACKER_MODULE_PATH + "de_tracker.config.module.json";
@@ -252,7 +252,7 @@ void stopAllChildren()
  */
 void preemptiveKill()
 {
-    std::cout << "Pre-emptively killing any old 'rpicam-vid', 'de_tracker.so', and 'de_camera64.so' processes..." << std::endl;
+    std::cout << "Pre-emptively killing any old 'rpicam-vid', 'de_tracker.so', and 'de_camera' processes..." << std::endl;
     executeCommand("sudo /home/pi/scripts/sh_kill_all_camera_apps.sh");
     std::this_thread::sleep_for(std::chrono::seconds(2));
 }
@@ -422,18 +422,18 @@ int main(int argc, char *argv[])
     if (enable_de_camera)
     {
         std::this_thread::sleep_for(std::chrono::seconds(15));
-        std::cout << "Starting de_camera64.so..." << std::endl;
-        de_camera_pid = startModule(DE_CAMERA_MODULE, DE_CAMERA_CONFIG, "de_camera64.so", BASE_CAMERA_MODULE_PATH);
+        std::cout << "Starting de_camera..." << std::endl;
+        de_camera_pid = startModule(DE_CAMERA_MODULE, DE_CAMERA_CONFIG, "de_camera", BASE_CAMERA_MODULE_PATH);
         if (de_camera_pid == -1)
         {
-            std::cerr << "CRITICAL: Failed to start de_camera64.so. Exiting." << std::endl;
+            std::cerr << "CRITICAL: Failed to start de_camera. Exiting." << std::endl;
             stopAllChildren();
             return 1;
         }
     }
     else
     {
-        std::cout << "SKIPPING de_camera64.so..." << std::endl;
+        std::cout << "SKIPPING de_camera..." << std::endl;
     }
 
     // Main monitoring loop: Wait for any child process to crash

@@ -15,7 +15,7 @@ echo -e "${RED}KILLING Camera Related APPs.${NC}"
 sudo pkill --signal 9 -f rpicam-vid
 sudo pkill --signal 9 -f de_tracker.so
 sudo pkill --signal 9 -f de_ai_tracker.so
-sudo pkill --signal 9 -f de_camera64.so
+sudo pkill --signal 9 -f de_camera
 
 # fix screen
 stty sane

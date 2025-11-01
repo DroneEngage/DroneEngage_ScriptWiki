@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 - **Params**:  
   `argc`, `argv[]` – Standard command-line arguments. Supports long options like `--enable-rpi-cam-capture`, `--execute`, etc.
 - **Side effects**:  
-  - Forks child processes (e.g., `rpicam-vid`, `de_camera64.so`).  
+  - Forks child processes (e.g., `rpicam-vid`, `de_camera`).  
   - Modifies system state by loading kernel modules (`v4l2loopback`).  
   - Executes external scripts provided via `--execute`.  
   - Registers signal handlers for `SIGINT` and `SIGTERM`.

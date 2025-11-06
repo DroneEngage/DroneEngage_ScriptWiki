@@ -5,6 +5,8 @@
 
 /home/pi/scripts/wifi_start_ap.sh
 
+sudo /home/pi/scripts/wifi_clean_all_non_ap.sh
+
 /home/pi/scripts/sh_clean_logs.sh
 
 

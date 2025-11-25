@@ -24,7 +24,7 @@ usage() {
     echo "  <version>     The version string to use for packages (e.g., v3.1.0)."
     echo "                If omitted, uses today's date (e.g., $(date +%Y%m%d))."
     echo "  [module_name] An optional specific module folder name to package (e.g., de_camera)."
-    echo "  [all]         (Default) Packages all modules."
+    echo "  <all>         (Default) Packages all modules."
     echo
     echo "Example 1 (All modules, specific version): $0 v3.1.0"
     echo "Example 2 (Specific module, date version): $0 de_camera"

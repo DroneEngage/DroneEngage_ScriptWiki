@@ -39,7 +39,7 @@ bool checkDiskSpace(const std::string& file_path) {
 }
 
 // Function to update a single config file using text replacement
-bool updateConfigFile(const std::string& file_path, const std::string& username, const std::string& access_code) {
+bool updateConfigFile(const std::string& file_path, const std::string& username, const std::string& access_code, const std::string& server) {
     // Check disk space
     if (!checkDiskSpace(file_path)) {
         return false;
@@ -81,10 +81,11 @@ bool updateConfigFile(const std::string& file_path, const std::string& username,
     // Declare updated flag
     bool updated = false;
 
-    // Prepare regex patterns for userName and accessCode
+    // Prepare regex patterns for userName, accessCode, and auth_ip
     // Matches: "userName": "value" or "userName" : "value" (with optional whitespace)
     std::regex username_pattern("\"userName\"\\s*:\\s*\"([^\"]*)\"");
     std::regex accesscode_pattern("\"accessCode\"\\s*:\\s*\"([^\"]*)\"");
+    std::regex authip_pattern("\"auth_ip\"\\s*:\\s*\"([^\"]*)\"");
 
     // Replace userName
     std::string new_content = std::regex_replace(
@@ -98,14 +99,29 @@ bool updateConfigFile(const std::string& file_path, const std::string& username,
     }
 
     // Replace accessCode
-    std::string final_content = std::regex_replace(
+    std::string accesscode_content = std::regex_replace(
         new_content,
         accesscode_pattern,
         "\"accessCode\": \"" + access_code + "\""
     );
-    if (final_content != new_content) {
+    if (accesscode_content != new_content) {
         updated = true;
         std::cout << "Updated 'accessCode' to '" << access_code << "' in " << file_path << std::endl;
+    }
+
+    // Optionally replace auth_ip if server parameter is not empty
+    std::string final_content = accesscode_content;
+    if (!server.empty()) {
+        std::string authip_content = std::regex_replace(
+            accesscode_content,
+            authip_pattern,
+            "\"auth_ip\": \"" + server + "\""
+        );
+        if (authip_content != accesscode_content) {
+            updated = true;
+            std::cout << "Updated 'auth_ip' to '" << server << "' in " << file_path << std::endl;
+        }
+        final_content = authip_content;
     }
 
     if (!updated) {
@@ -144,20 +160,21 @@ bool updateConfigFile(const std::string& file_path, const std::string& username,
 }
 
 int main(int argc, char** argv) {
-    // Check for at least username, access_code, and one file path
-    if (argc < 4) {
-        std::cerr << "Usage: " << argv[0] << " <username> <access_code> <config_file_path> [<config_file_path> ...]" << std::endl;
+    // Check for at least username, access_code, server, and one file path
+    if (argc < 5) {
+        std::cerr << "Usage: " << argv[0] << " <username> <access_code> <server> <config_file_path> [<config_file_path> ...]" << std::endl;
         return 1;
     }
 
     std::string username = argv[1];
     std::string access_code = argv[2];
+    std::string server = argv[3];
 
-    // Process each file path starting from argv[3]
+    // Process each file path starting from argv[4]
     bool all_success = true;
-    for (int i = 3; i < argc; ++i) {
+    for (int i = 4; i < argc; ++i) {
         std::string file_path = argv[i];
-        if (!updateConfigFile(file_path, username, access_code)) {
+        if (!updateConfigFile(file_path, username, access_code, server)) {
             all_success = false;
         }
     }

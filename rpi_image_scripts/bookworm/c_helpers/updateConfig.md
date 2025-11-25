@@ -7,7 +7,8 @@ It is intended for JSON (or JSON-like) config files that contain lines such as:
 ```json
 {
   "userName": "oldUser",
-  "accessCode": "OLD_CODE"
+  "accessCode": "OLD_CODE",
+  "auth_ip": "cloud.ardupilot.org"
 }
 ```
 
@@ -15,6 +16,7 @@ The tool:
 - Creates a timestamped backup before writing.
 - Locks the file during update to avoid concurrent writes.
 - Writes to a temporary file and atomically renames it over the original.
+- Optionally updates the `"auth_ip"` field when a non-empty server value is provided.
 - Can process multiple files in a single invocation.
 
 ## Build
@@ -34,11 +36,12 @@ g++ -std=c++17 -O2 -o updateConfig updateConfig.cpp -lstdc++fs
 ## Usage
 
 ```bash
-./updateConfig <username> <access_code> <config_file_path> [<config_file_path> ...]
+./updateConfig <username> <access_code> <server> <config_file_path> [<config_file_path> ...]
 ```
 
 - `username`: New value for the `"userName"` field.
 - `access_code`: New value for the `"accessCode"` field.
+- `server`: New value for the `"auth_ip"` field. If this argument is an empty string (`""`), the `"auth_ip"` field is left unchanged.
 - `config_file_path`: One or more files to update.
 
 ### Examples
@@ -46,13 +49,19 @@ g++ -std=c++17 -O2 -o updateConfig updateConfig.cpp -lstdc++fs
 - Update a single file:
 
 ```bash
-./updateConfig myUser ABCD-1234 /etc/myapp/config.json
+./updateConfig myUser ABCD-1234 10.0.0.5 /etc/myapp/config.json
 ```
 
 - Update multiple files in one run:
 
 ```bash
-./updateConfig myUser ABCD-1234 /etc/myapp/config.json /opt/app/conf/settings.json
+./updateConfig myUser ABCD-1234 10.0.0.5 /etc/myapp/config.json /opt/app/conf/settings.json
+```
+
+- Leave `auth_ip` unchanged, while still updating `userName` and `accessCode`:
+
+```bash
+./updateConfig myUser ABCD-1234 "" /etc/myapp/config.json
 ```
 
 ### Expected input format
@@ -60,6 +69,7 @@ g++ -std=c++17 -O2 -o updateConfig updateConfig.cpp -lstdc++fs
 The program searches the file text (not a parsed JSON AST) and replaces the first regex-matching occurrences of:
 - `"userName"\s*:\s*"..."`
 - `"accessCode"\s*:\s*"..."`
+- `"auth_ip"\s*:\s*"..."` (only when `server` is non-empty)
 
 This means it works on JSON and JSON-like text where these keys appear with string values. Whitespace around `:` is optional.
 
@@ -69,6 +79,7 @@ This means it works on JSON and JSON-like text where these keys appear with stri
 - **Disk space check**: Warns if disk space cannot be checked; errors if < ~1MB available in the target directory.
 - **File locking**: Uses `flock(LOCK_EX)` to serialize writers on the same file.
 - **Atomic write**: Writes to `<file>.tmp` then `rename()`s over the original.
+- **Optional auth_ip update**: When `server` is non-empty, updates the `"auth_ip"` field if present.
 - **Multi-file processing**: Processes each provided path independently and reports per-file success.
 
 ## Output and exit codes
@@ -79,7 +90,7 @@ This means it works on JSON and JSON-like text where these keys appear with stri
 ## Limitations
 
 - The program performs regex-based text replacement; it does not parse JSON. If the keys are commented out, duplicated, or embedded in strings, results may vary.
-- It only updates existing `"userName"` and `"accessCode"` keys. It does not insert them if missing.
+- It only updates existing `"userName"`, `"accessCode"`, and `"auth_ip"` keys. It does not insert them if missing.
 - Only string literal values are supported by the regex.
 
 ## Implementation notes (for maintainers)
@@ -87,10 +98,11 @@ This means it works on JSON and JSON-like text where these keys appear with stri
 - Key functions:
   - `createBackup(path)`: copies `path` to `path.bak.<epoch>` using `std::filesystem::copy_file`.
   - `checkDiskSpace(path)`: requires ~1MB free in the parent directory.
-  - `updateConfigFile(path, username, access_code)`: locks, reads, updates via regex, writes to temp, atomic rename.
+  - `updateConfigFile(path, username, access_code, server)`: locks, reads, updates via regex, writes to temp, atomic rename.
 - Regex used:
   - `"userName"\s*:\s*"([^"]*)"`
   - `"accessCode"\s*:\s*"([^"]*)"`
+  - `"auth_ip"\s*:\s*"([^"]*)"`
 - Temporary file suffix: `.tmp`
 
 

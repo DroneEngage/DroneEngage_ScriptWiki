@@ -142,7 +142,13 @@ echo "Crontabs cleared. Review /etc/cron.* for persistent system cron jobs."
 # 11.a delete bak files of config.
 sudo find /home/pi -type f -name "*.bak.*" -delete
 sudo find /home/pi -type d -name "terrain" -exec rm -rf {} +
+sudo find /home/pi -type d -name "logs" -exec rm -rf {} +
+sudo find /home/pi -type f -name "eeprom.bin" -delete
 sudo find /home/pi -type f -name "*.local" -delete
+
+if [ -d /home/pi/drone_engage_backups ]; then
+    sudo rm -f /home/pi/drone_engage_backups/*.*
+fi
 
 # 12. Final check of disk space
 echo "--- Disk space after cleanup ---"

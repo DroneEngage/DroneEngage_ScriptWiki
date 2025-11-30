@@ -9,4 +9,6 @@ sudo /home/pi/scripts/wifi_clean_all_non_ap.sh
 
 /home/pi/scripts/sh_clean_logs.sh
 
+# Clean up image files from de_camera folder
+sudo find ~/drone_engage/de_camera -type f \( -iname "*.png" -o -iname "*.bmp" -o -iname "*.jpg" -o -iname "*.jpeg" \) -delete 2>/dev/null
 

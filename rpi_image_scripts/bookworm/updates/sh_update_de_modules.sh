@@ -139,7 +139,7 @@ fi
 # Final check before proceeding
 if [[ ${#MODULE_LIST[@]} -eq 0 ]]; then
     logc "No modules found to update." "$YELLOW"
-    rm -rf "$TMP"
+    sudo rm -rf "$TMP"
     exit 0
 fi
 
@@ -191,18 +191,18 @@ for mod in "${MODULE_LIST[@]}"; do
     
     # Checksum validation
     sha256sum -c "${mod}_${VERSION}.sha256" >/dev/null || {
-        logc "CHECKSUM FAIL: $mod" "$RED"; rm -f "${mod}_${VERSION}".*; continue;
+        logc "CHECKSUM FAIL: $mod" "$RED"; sudo rm -f "${mod}_${VERSION}".*; continue;
     }
     logc "Checksum OK" "$GREEN"
 
     # 3. Backup
     [[ -d "$BASE/$mod" ]] && {
         logc "Backing up $mod..." "$YELLOW"
-        tar -czf "$BACKUP_DIR/${mod}_$(date +%Y%m%d_%H%M%S).tar.gz" -C "$BASE" "$mod"
+        tar -czf "$BACKUP_DIR/${mod}_$(date +%Y%m%d_%H%M%S).tar.gz" -C "/" "${BASE#/}/$mod"
     }
 
     # 4. Extract new module
-    rm -rf "$BASE/$mod"
+    sudo rm -rf "$BASE/$mod"
     logc "Extracting..." "$BLUE"
     tar -xzf "${mod}_${VERSION}.tar.gz" -C "$BASE" --no-same-owner --overwrite || {
         logc "EXTRACT FAILED: $mod" "$RED"; continue;
@@ -216,7 +216,7 @@ for mod in "${MODULE_LIST[@]}"; do
 
     # Keep only 3 latest backups
     find "$BACKUP_DIR" -name "${mod}_*.tar.gz" -printf '%T@ %p\n' | \
-        sort -nr | tail -n +4 | cut -d' ' -f2- | xargs -r rm -f
+        sort -nr | tail -n +4 | cut -d' ' -f2- | xargs -r sudo rm -f
 
     logc "$mod updated" "$GREEN"
     # Record installed version locally
@@ -229,5 +229,4 @@ if [[ $DRY_RUN -eq 1 ]]; then
 else
     logc "Done. $updated_any module(s) updated." "$GREEN"
 fi
-rm -rf "$TMP"
-
+sudo rm -rf "$TMP"

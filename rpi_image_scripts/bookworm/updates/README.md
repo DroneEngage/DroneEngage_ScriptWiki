@@ -7,6 +7,16 @@ This folder contains scripts for backing up DroneEngage configuration files and 
 - **sh_backup_configurations.sh**
   Backs up all `.json` configuration files from `/home/pi/drone_engage` to a timestamped folder under `/home/pi/drone_engage_config_backups`. Preserves the original directory structure (module subfolders). Automatically prunes old backups, keeping only the 3 most recent. Color-coded output for info, warnings, and errors.
 
+## Version Check
+
+- **sh_list_versions.sh**
+  Lists versions of all DroneEngage executable binaries. Scans `/home/pi/drone_engage` subdirectories for executable files, runs each with `-v` parameter, and displays version information. Skips script files (`.sh`, `.py`, `.pl`) and binaries that return errors.
+
+  **Usage:**
+  ```bash
+  ./sh_list_versions.sh
+  ```
+
 ## OTA Updates
 
 - **sh_update_de_modules.sh**

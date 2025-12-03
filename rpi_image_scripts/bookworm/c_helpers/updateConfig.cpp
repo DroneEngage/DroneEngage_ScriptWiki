@@ -87,45 +87,72 @@ bool updateConfigFile(const std::string& file_path, const std::string& username,
     std::regex accesscode_pattern("\"accessCode\"\\s*:\\s*\"([^\"]*)\"");
     std::regex authip_pattern("\"auth_ip\"\\s*:\\s*\"([^\"]*)\"");
 
-    // Replace userName
-    std::string new_content = std::regex_replace(
-        content,
-        username_pattern,
-        "\"userName\": \"" + username + "\""
-    );
-    if (new_content != content) {
-        updated = true;
-        std::cout << "Updated 'userName' to '" << username << "' in " << file_path << std::endl;
-    }
+    std::string current_content = content;
 
-    // Replace accessCode
-    std::string accesscode_content = std::regex_replace(
-        new_content,
-        accesscode_pattern,
-        "\"accessCode\": \"" + access_code + "\""
-    );
-    if (accesscode_content != new_content) {
-        updated = true;
-        std::cout << "Updated 'accessCode' to '" << access_code << "' in " << file_path << std::endl;
-    }
-
-    // Optionally replace auth_ip if server parameter is not empty
-    std::string final_content = accesscode_content;
-    if (!server.empty()) {
-        std::string authip_content = std::regex_replace(
-            accesscode_content,
-            authip_pattern,
-            "\"auth_ip\": \"" + server + "\""
-        );
-        if (authip_content != accesscode_content) {
+    // Replace userName only if username is not empty
+    if (!username.empty()) {
+        if (std::regex_search(current_content, username_pattern)) {
+            std::string new_content = std::regex_replace(
+                current_content,
+                username_pattern,
+                "\"userName\": \"" + username + "\""
+            );
+            if (new_content != current_content) {
+                std::cout << "Updated 'userName' to '" << username << "' in " << file_path << std::endl;
+            } else {
+                std::cout << "'userName' already set to '" << username << "' in " << file_path << std::endl;
+            }
             updated = true;
-            std::cout << "Updated 'auth_ip' to '" << server << "' in " << file_path << std::endl;
+            current_content = new_content;
+        } else {
+            std::cerr << "Warning: 'userName' field not found in " << file_path << std::endl;
         }
-        final_content = authip_content;
     }
+
+    // Replace accessCode only if access_code is not empty
+    if (!access_code.empty()) {
+        if (std::regex_search(current_content, accesscode_pattern)) {
+            std::string new_content = std::regex_replace(
+                current_content,
+                accesscode_pattern,
+                "\"accessCode\": \"" + access_code + "\""
+            );
+            if (new_content != current_content) {
+                std::cout << "Updated 'accessCode' in " << file_path << std::endl;
+            } else {
+                std::cout << "'accessCode' already set in " << file_path << std::endl;
+            }
+            updated = true;
+            current_content = new_content;
+        } else {
+            std::cerr << "Warning: 'accessCode' field not found in " << file_path << std::endl;
+        }
+    }
+
+    // Replace auth_ip only if server is not empty
+    if (!server.empty()) {
+        if (std::regex_search(current_content, authip_pattern)) {
+            std::string new_content = std::regex_replace(
+                current_content,
+                authip_pattern,
+                "\"auth_ip\": \"" + server + "\""
+            );
+            if (new_content != current_content) {
+                std::cout << "Updated 'auth_ip' to '" << server << "' in " << file_path << std::endl;
+            } else {
+                std::cout << "'auth_ip' already set to '" << server << "' in " << file_path << std::endl;
+            }
+            updated = true;
+            current_content = new_content;
+        } else {
+            std::cerr << "Warning: 'auth_ip' field not found in " << file_path << std::endl;
+        }
+    }
+
+    std::string final_content = current_content;
 
     if (!updated) {
-        std::cerr << "Warning: No 'userName' or 'accessCode' fields found in " << file_path << std::endl;
+        std::cerr << "Warning: No fields were updated in " << file_path << " (no parameters provided)" << std::endl;
     }
 
     // Write to a temporary file

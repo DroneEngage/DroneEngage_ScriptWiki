@@ -1,6 +1,6 @@
 # updateConfig
 
-Small C++17 CLI utility to update `"userName"` and `"accessCode"` fields in one or more configuration files using safe, in-place text replacement.
+Small C++17 CLI utility to selectively update `"userName"`, `"accessCode"`, and `"auth_ip"` fields in one or more configuration files using safe, in-place text replacement.
 
 It is intended for JSON (or JSON-like) config files that contain lines such as:
 
@@ -39,9 +39,9 @@ g++ -std=c++17 -O2 -o updateConfig updateConfig.cpp -lstdc++fs
 ./updateConfig <username> <access_code> <server> <config_file_path> [<config_file_path> ...]
 ```
 
-- `username`: New value for the `"userName"` field.
-- `access_code`: New value for the `"accessCode"` field.
-- `server`: New value for the `"auth_ip"` field. If this argument is an empty string (`""`), the `"auth_ip"` field is left unchanged.
+- `username`: New value for the `"userName"` field. If empty (`""`), the field is left unchanged.
+- `access_code`: New value for the `"accessCode"` field. If empty (`""`), the field is left unchanged.
+- `server`: New value for the `"auth_ip"` field. If empty (`""`), the field is left unchanged.
 - `config_file_path`: One or more files to update.
 
 ### Examples
@@ -58,10 +58,16 @@ g++ -std=c++17 -O2 -o updateConfig updateConfig.cpp -lstdc++fs
 ./updateConfig myUser ABCD-1234 10.0.0.5 /etc/myapp/config.json /opt/app/conf/settings.json
 ```
 
-- Leave `auth_ip` unchanged, while still updating `userName` and `accessCode`:
+- Update only `userName` and `accessCode`, leave `auth_ip` unchanged:
 
 ```bash
 ./updateConfig myUser ABCD-1234 "" /etc/myapp/config.json
+```
+
+- Update only `auth_ip` (server), leave `userName` and `accessCode` unchanged:
+
+```bash
+./updateConfig "" "" 10.0.0.5 /etc/myapp/config.json
 ```
 
 ### Expected input format
@@ -71,6 +77,8 @@ The program searches the file text (not a parsed JSON AST) and replaces the firs
 - `"accessCode"\s*:\s*"..."`
 - `"auth_ip"\s*:\s*"..."` (only when `server` is non-empty)
 
+Each field is only updated if its corresponding parameter is non-empty, allowing selective updates.
+
 This means it works on JSON and JSON-like text where these keys appear with string values. Whitespace around `:` is optional.
 
 ## Behavior and safety features
@@ -79,12 +87,14 @@ This means it works on JSON and JSON-like text where these keys appear with stri
 - **Disk space check**: Warns if disk space cannot be checked; errors if < ~1MB available in the target directory.
 - **File locking**: Uses `flock(LOCK_EX)` to serialize writers on the same file.
 - **Atomic write**: Writes to `<file>.tmp` then `rename()`s over the original.
-- **Optional auth_ip update**: When `server` is non-empty, updates the `"auth_ip"` field if present.
+- **Selective field updates**: Each field (`userName`, `accessCode`, `auth_ip`) is only updated when its parameter is non-empty. Pass `""` to skip a field.
 - **Multi-file processing**: Processes each provided path independently and reports per-file success.
 
 ## Output and exit codes
 
-- Prints what fields were updated per file. Warns if neither field is found.
+- Prints what fields were updated per file, or indicates if a field already has the requested value.
+- Warns if a requested field is not found in the file.
+- Warns if no parameters were provided (all empty strings).
 - Exit code `0` if all files update successfully, otherwise `1`.
 
 ## Limitations

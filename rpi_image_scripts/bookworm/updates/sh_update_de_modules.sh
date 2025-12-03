@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================================
-# sh_package_modules.sh.sh — Per-module OTA update with backup + colors
+# sh_package_de_modules.sh — Per-module OTA update with backup + colors
 #
 # PURPOSE:
 #   This script performs an over-the-air (OTA) update for each DroneEngage module
@@ -10,7 +10,7 @@
 #   is designed to be run on boot or manually via cockpit.
 #
 # USAGE:
-#   sudo ./sh_package_modules.sh.sh
+#   sudo ./sh_package_de_modules.sh
 #
 # MAIN STEPS:
 #   1. Discover installed modules or use defaults if none found.
@@ -139,7 +139,7 @@ fi
 # Final check before proceeding
 if [[ ${#MODULE_LIST[@]} -eq 0 ]]; then
     logc "No modules found to update." "$YELLOW"
-    sudo rm -rf "$TMP"
+    [[ -d "$TMP" ]] && sudo rm -rf "$TMP"
     exit 0
 fi
 
@@ -187,7 +187,8 @@ for mod in "${MODULE_LIST[@]}"; do
     fi
 
     # 2. Download and check files
-    curl -fsSLO "$TARBALL" && curl -fsSLO "$SUMFILE"
+    curl -fsSLO "$TARBALL" || { logc "DOWNLOAD FAIL: $TARBALL" "$RED"; continue; }
+    curl -fsSLO "$SUMFILE" || { logc "DOWNLOAD FAIL: $SUMFILE" "$RED"; continue; }
     
     # Checksum validation
     sha256sum -c "${mod}_${VERSION}.sha256" >/dev/null || {
@@ -198,7 +199,7 @@ for mod in "${MODULE_LIST[@]}"; do
     # 3. Backup
     [[ -d "$BASE/$mod" ]] && {
         logc "Backing up $mod..." "$YELLOW"
-        tar -czf "$BACKUP_DIR/${mod}_$(date +%Y%m%d_%H%M%S).tar.gz" -C "/" "${BASE#/}/$mod"
+        sudo tar -czf "$BACKUP_DIR/${mod}_$(date +%Y%m%d_%H%M%S).tar.gz" -C "/" "${BASE#/}/$mod"
     }
 
     # 4. Extract new module

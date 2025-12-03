@@ -147,7 +147,11 @@ sudo find /home/pi -type f -name "eeprom.bin" -delete
 sudo find /home/pi -type f -name "*.local" -delete
 
 if [ -d /home/pi/drone_engage_backups ]; then
-    sudo rm -f /home/pi/drone_engage_backups/*.*
+    sudo rm -rf /home/pi/drone_engage_backups/
+fi
+
+if [ -d /home/pi/drone_engage_config_backups ]; then
+    sudo rm -rf /home/pi/drone_engage_config_backups/
 fi
 
 # 12. Final check of disk space

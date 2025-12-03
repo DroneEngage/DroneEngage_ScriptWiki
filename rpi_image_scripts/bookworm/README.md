@@ -2,6 +2,23 @@
 
 This folder contains helper and management scripts for Raspberry Pi OS (Bookworm/Bullseye) to operate DroneEngage services, networking (AP/Client), cameras, simulators, and maintenance tasks.
 
+## Subfolders
+
+- **c_helpers/**
+  C++ helper utilities. Contains `updateConfig` — a tool to update DroneEngage JSON config files with username, access code, and server settings. Includes file locking, backup creation, and disk space checks.
+
+- **service/**
+  Systemd service unit files for DroneEngage modules: `de_communicator.service`, `de_mavlink.service`, `de_camera.service`, `de_camera_rpi_cam.service`, `de_camera_tracker.service`, `de_camera_imx_ai.service`, `de_gpio.service`, `de_pysenxor_stream.service`, and `check-and-run.service`.
+
+- **updates/**
+  Scripts for configuration backup and OTA updates. See `updates/README.md` for details.
+
+- **wrapper/**
+  Camera manager wrapper (C++) for orchestrating camera pipelines and tracking modules. See `wrapper/README.md` for details.
+
+- **not_used_but_useful/**
+  Archive of scripts not currently in use but potentially useful for reference.
+
 ## Service Management
 - **enable_and_restart_services.sh**
   Enables and starts DroneEngage core services: `de_communicator.service`, `de_mavlink.service`.
@@ -30,6 +47,9 @@ This folder contains helper and management scripts for Raspberry Pi OS (Bookworm
 
 - **wifi_use_wlan.sh**
   Connects to a Wi‑Fi network as a client using NetworkManager (`nmcli`). Cleans up any existing hotspot profile, creates or reuses a connection for given SSID/password, brings it up, and prints status.
+
+- **wifi_clean_all_non_ap.sh**
+  Removes all NetworkManager connections except the hotspot AP (`hotspot`). Useful for cleaning up stale Wi-Fi profiles while preserving the access point configuration.
 
 ## Camera and Video
 - **sh_camera_create_named_vc.sh**
@@ -79,7 +99,9 @@ This folder contains helper and management scripts for Raspberry Pi OS (Bookworm
 
 ---
 
-Notes
-- Many scripts require sudo and assume specific paths under `/home/pi`.
+## Notes
+
+- Many scripts require `sudo` and assume specific paths under `/home/pi`.
 - Camera scripts expect `v4l2loopback`, `ffmpeg`, and `rpicam-apps` to be installed.
 - Networking scripts may disrupt connectivity; run from console or be ready to reconnect.
+- See subfolder READMEs for detailed documentation on `updates/`, `wrapper/`, and `c_helpers/`.

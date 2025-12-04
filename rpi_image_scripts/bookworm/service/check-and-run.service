@@ -1,10 +1,10 @@
 [Unit]
 Description=Check for AP activation file and run script
-After=network-online.target
+After=local-fs.target
 
 [Service]
 Type=oneshot
-ExecStart=/bin/bash -c "if [ -f /boot/activate_ap.txt ]; then /home/pi/scripts/wifi_start_ap.sh && rm /boot/activate_ap.txt; fi"
+ExecStart=/bin/bash -c "FILE=''; [ -f /boot/activate_ap.txt ] && FILE=/boot/activate_ap.txt; [ -f /boot/firmware/activate_ap.txt ] && FILE=/boot/firmware/activate_ap.txt; if [ -n \"$FILE\" ]; then /home/pi/scripts/wifi_start_ap.sh && rm \"$FILE\"; fi"
 
 [Install]
 WantedBy=multi-user.target

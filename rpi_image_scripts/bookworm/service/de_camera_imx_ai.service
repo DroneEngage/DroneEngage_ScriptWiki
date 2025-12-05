@@ -9,7 +9,7 @@ Type=simple
 WorkingDirectory=/home/pi/
 ExecStart=/home/pi/scripts/wrapper/camera_manager_wrapper 1 "/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json"
 Restart=on-failure
-RestartSec=5s # Wait 5 seconds before attempting a restart
+RestartSec=5s
 
 StandardOutput=journal
 StandardError=journal

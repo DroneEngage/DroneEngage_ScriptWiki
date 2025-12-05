@@ -1,20 +1,17 @@
 [Unit]
- Description=DE Communication Service Ver 1.0
- After=systemd-modules-load.service
- Documentation=https://droneengage.com  
+Description=DE Communication Service Ver 1.0
+After=systemd-modules-load.service
+Documentation=https://droneengage.com  
 
 
 [Service]
- Type=single
- WorkingDirectory=/home/pi/drone_engage/de_comm
- ExecStart=/home/pi/drone_engage/de_comm/de_comm  -c /home/pi/drone_engage/de_comm/de_comm.config.module.json 
- Restart=on-failure
- TimeoutStopSec=5 #specifies the time to wait for the service to stop gracefully
- RestartSec=5 #to delay restarting the service in case of a failure.
- #ProtectHome=true  #to ensure that the service does not have write access to the home directory of the user running the service.
- #ProtectSystem=full #to ensure that the service does not have write access to any system files or directories.
- #ReadWriteDirectories=/home/pi/drone_engage/de_comm/ #to specify any directories that the service needs read/write access to.
-
+Type=single
+WorkingDirectory=/home/pi/drone_engage/de_comm
+ExecStart=/home/pi/drone_engage/de_comm/de_comm  -c /home/pi/drone_engage/de_comm/de_comm.config.module.json 
+Restart=on-failure
+TimeoutStopSec=5 
+RestartSec=5 
+ 
 [Install]
- WantedBy=multi-user.target
+WantedBy=multi-user.target
 

@@ -7,17 +7,13 @@ Documentation=https://droneengage.com
 [Service]
 Type=simple
 WorkingDirectory=/home/pi/scripts/wrapper
-ExecStart=/home/pi/scripts/wrapper/camera_manager_wrapper --enable-tracker 1
+ExecStart=/home/pi/scripts/wrapper/camera_manager_wrapper -c -t 
 Restart=on-failure
-RestartSec=5s # Wait 5 seconds before attempting a restart
+RestartSec=5s
 
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=camera_wrapper
-
-# You might need to adjust user/group if camera access is restricted
-# User=pi
-# Group=video
 
 [Install]
 WantedBy=multi-user.target

@@ -1,29 +1,38 @@
 #!/bin/bash
 
 # Color definitions for terminal output
-RED='\033[1;31m'
-GREEN='\033[1;32m'
+RED='\033[0;31m'
+GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[1;34m'
 NC='\033[0m' # No Color
+
+log_info() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+log_warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
 
 # Script to stop specific services
 
-echo -e "${YELLOW}Stopping Drone Camera RPI services...${NC}"
-
+log_warn "Stopping Drone Camera RPI services..."
 
 # Stop de_camera_rpi_cam.service
-echo -e "${BLUE}Stopping de_camera_rpi_cam.service...${NC}"
+log_info "Stopping de_camera_rpi_cam.service..."
 if sudo systemctl stop de_camera_rpi_cam.service; then
-  echo -e "${GREEN}de_camera_rpi_cam.service stopped successfully.${NC}"
+  log_info "de_camera_rpi_cam.service stopped successfully."
 else
-  echo -e "${RED}Failed to stop de_camera_rpi_cam.service.${NC}"
+  log_error "Failed to stop de_camera_rpi_cam.service."
 fi
 
-
 #User Info
-echo -e "${YELLOW}This script stops the following services:${NC}"
-echo -e "${BLUE} - de_camera_rpi_cam.service${NC}"
-echo -e "${YELLOW}These services are related to the Drone Engine system.${NC}"
-echo -e "${YELLOW}You will be prompted for your sudo password to execute these commands.${NC}"
-echo -e "${YELLOW}Please ensure you have the necessary permissions to stop these services.${NC}"
+log_warn "This script stops the following services:"
+log_info " - de_camera_rpi_cam.service"
+log_warn "These services are related to the Drone Engine system."
+log_warn "You will be prompted for your sudo password to execute these commands."
+log_warn "Please ensure you have the necessary permissions to stop these services."

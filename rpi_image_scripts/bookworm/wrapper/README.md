@@ -28,6 +28,10 @@ This folder contains a C++ wrapper application for managing DroneEngage camera a
 ./camera_manager_wrapper [OPTIONS] [postprocess_file_path]
 ```
 
+The optional `postprocess_file_path` (if provided) is passed to the RPI camera pipeline script
+`sh_camera_run_rpi_camera.sh` and is typically a JSON file (for example, the IMX500
+post‑processing configuration).
+
 ### Options
 
 | Option | Description |
@@ -42,18 +46,28 @@ This folder contains a C++ wrapper application for managing DroneEngage camera a
 ### Examples
 
 ```bash
-# Enable camera capture and tracking
+# 1) RPI camera only (virtual camera source)
+./camera_manager_wrapper --enable-rpi-cam-capture
+
+# 2) RPI camera + tracking module
 ./camera_manager_wrapper --enable-rpi-cam-capture --enable-tracker
 
-# Enable AI tracking with a model config
-./camera_manager_wrapper --enable-ai-tracker "/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json"
+# 3) RPI Sony IMX500 camera with AI post‑processing
+#    The JSON file is passed as postprocess_file_path to the RPI pipeline
+./camera_manager_wrapper --enable-rpi-cam-capture --enable-ai-tracker \
+  "/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json"
 
-# Enable camera capture with a custom script
+# 4) RPI camera with an extra helper script
 ./camera_manager_wrapper --enable-rpi-cam-capture --execute /path/to/script.sh
 
-# Disable de_camera module
+# 5) Start tracking without de_camera
 ./camera_manager_wrapper --disable-de-camera --enable-tracker
 ```
+
+> **Note:** Older invocations such as
+> `./camera_manager_wrapper 1 "/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json"`
+> are not supported by this implementation. The wrapper only accepts options plus
+> an optional single positional `postprocess_file_path` as shown above.
 
 ## Module Paths
 

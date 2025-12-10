@@ -7,7 +7,7 @@ Documentation=https://droneengage.com
 [Service]
 Type=simple
 WorkingDirectory=/home/pi/
-ExecStart=/home/pi/scripts/wrapper/camera_manager_wrapper 1 "/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json"
+ExecStart=/home/pi/scripts/wrapper/camera_manager_wrapper -c -t  "/home/pi/rpicam-apps/assets/imx500_mobilenet_ssd.json"
 Restart=on-failure
 RestartSec=5s
 

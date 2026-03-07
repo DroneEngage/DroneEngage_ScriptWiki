@@ -15,31 +15,34 @@
 #include <chrono>      // For std::chrono::seconds
 #include <sys/types.h> // For pid_t
 #include <sys/wait.h>  // For waitpid()
-#include <unistd.h>    // For fork(), execlp(), kill(), chdir()
+#include <unistd.h>    // For fork(), execlp(), kill(), chdir(), access()
 #include <csignal>     // For SIGTERM, SIGINT
 #include <getopt.h>    // For parsing command-line options
 
-#define VERSION_APP "3.0.3"
+#define VERSION_APP "4.0.0"
 
 // Global PID variables to track child processes
 pid_t camera_pid = -1;
 pid_t tracking_camera_pid = -1;
 pid_t ai_tracking_camera_pid = -1;
+pid_t generic_ai_tracking_camera_pid = -1;
 pid_t de_camera_pid = -1;
 std::vector<pid_t> script_pids; // To track PIDs of executed scripts
 
-// Base directories for drone_engage modules
-const std::string BASE_CAMERA_MODULE_PATH = "/home/pi/drone_engage/de_camera/";
-const std::string BASE_TRACKER_MODULE_PATH = "/home/pi/drone_engage/de_tracking/";
-const std::string BASE_AI_TRACKER_MODULE_PATH = "/home/pi/drone_engage/de_ai_tracker/";
+// Default base directories for drone_engage modules
+const std::string DEFAULT_BASE_DRONE_ENGAGE_PATH = "/home/pi/drone_engage/";
+const std::string DEFAULT_SCRIPTS_PATH = "/home/pi/scripts";
 
-// Module-specific paths
-const std::string DE_CAMERA_MODULE = BASE_CAMERA_MODULE_PATH + "de_camera";
-const std::string DE_CAMERA_CONFIG = BASE_CAMERA_MODULE_PATH + "de_camera.config.module.json";
-const std::string TRACKING_MODULE = BASE_TRACKER_MODULE_PATH + "de_tracker";
-const std::string TRACKING_CONFIG = BASE_TRACKER_MODULE_PATH + "de_tracker.config.module.json";
-const std::string AI_TRACKING_MODULE = BASE_AI_TRACKER_MODULE_PATH + "de_ai_tracker.so";
-const std::string AI_TRACKING_CONFIG = BASE_AI_TRACKER_MODULE_PATH + "de_ai_tracker.config.module.json";
+// Runtime base directories (can be overridden by command line arguments)
+std::string BASE_DRONE_ENGAGE_PATH = DEFAULT_BASE_DRONE_ENGAGE_PATH;
+std::string SCRIPTS_PATH = DEFAULT_SCRIPTS_PATH;
+
+// Derived module paths (computed from BASE_DRONE_ENGAGE_PATH)
+std::string BASE_CAMERA_MODULE_PATH = BASE_DRONE_ENGAGE_PATH + "de_camera/";
+std::string BASE_TRACKER_MODULE_PATH = BASE_DRONE_ENGAGE_PATH + "de_tracking/";
+std::string BASE_AI_TRACKER_MODULE_PATH = BASE_DRONE_ENGAGE_PATH + "de_ai_tracker/";
+
+// Note: Module-specific paths are now computed dynamically in main() after argument parsing
 
 /**
  * @brief Executes a shell command and checks its exit code.
@@ -55,6 +58,7 @@ bool executeCommand(const std::string &cmd)
         std::cerr << "Command failed with exit code " << result << ": " << cmd << std::endl;
         return false;
     }
+    std::cout << "Command completed successfully" << std::endl;
     return true;
 }
 
@@ -121,7 +125,7 @@ pid_t startScript(const std::string &scriptPath)
  */
 pid_t startCameraPipeline(const std::string &postProcessFile)
 {
-    std::string cameraCmd = "/home/pi/scripts/sh_camera_run_rpi_camera.sh ";
+    std::string cameraCmd = SCRIPTS_PATH + "/sh_camera_run_rpi_camera.sh ";
     if (!postProcessFile.empty())
     {
         cameraCmd += " \"" + postProcessFile + "\"";
@@ -191,6 +195,28 @@ pid_t startCameraPipeline(const std::string &postProcessFile)
  */
 pid_t startModule(const std::string &modulePath, const std::string &moduleConfig, const std::string &moduleName, const std::string &workingDir)
 {
+    std::cout << "Starting module: " << moduleName << std::endl;
+    std::cout << "  Module path: " << modulePath << std::endl;
+    std::cout << "  Config path: " << moduleConfig << std::endl;
+    std::cout << "  Working dir: " << workingDir << std::endl;
+    
+    // Check if module executable exists
+    if (access(modulePath.c_str(), F_OK) != 0) {
+        std::cerr << "ERROR: Module executable not found: " << modulePath << std::endl;
+        return -1;
+    }
+    
+    // Check if config file exists
+    if (access(moduleConfig.c_str(), F_OK) != 0) {
+        std::cerr << "WARNING: Config file not found: " << moduleConfig << std::endl;
+    }
+    
+    // Check if working directory exists
+    if (access(workingDir.c_str(), F_OK) != 0) {
+        std::cerr << "ERROR: Working directory not found: " << workingDir << std::endl;
+        return -1;
+    }
+    
     pid_t pid = fork();
     if (pid == -1)
     {
@@ -204,6 +230,7 @@ pid_t startModule(const std::string &modulePath, const std::string &moduleConfig
             perror(("chdir for " + moduleName + " failed").c_str());
             _exit(1);
         }
+        std::cout << "Executing: " << modulePath << " -c " << moduleConfig << " in dir " << workingDir << std::endl;
         execlp(modulePath.c_str(), moduleName.c_str(), "-c", moduleConfig.c_str(), (char *)NULL);
         perror(("execlp for " + moduleName + " failed").c_str());
         _exit(127);
@@ -232,6 +259,11 @@ void stopAllChildren()
         std::cout << "Stopping ai tracking module (PID " << ai_tracking_camera_pid << ")..." << std::endl;
         kill(ai_tracking_camera_pid, SIGTERM);
     }
+    if (generic_ai_tracking_camera_pid > 0)
+    {
+        std::cout << "Stopping generic ai tracking module (PID " << generic_ai_tracking_camera_pid << ")..." << std::endl;
+        kill(generic_ai_tracking_camera_pid, SIGTERM);
+    }
     if (de_camera_pid > 0)
     {
         std::cout << "Stopping de_camera module (PID " << de_camera_pid << ")..." << std::endl;
@@ -252,8 +284,10 @@ void stopAllChildren()
  */
 void preemptiveKill()
 {
-    std::cout << "Pre-emptively killing any old 'rpicam-vid', 'de_tracker', and 'de_camera' processes..." << std::endl;
-    executeCommand("sudo /home/pi/scripts/sh_kill_all_camera_apps.sh");
+    std::cout << "Pre-emptively killing any old 'rpicam-vid', 'de_tracker', 'de_camera', and 'de_yolo_generic' processes..." << std::endl;
+    std::string kill_script = SCRIPTS_PATH;
+    if (kill_script.back() == '/') kill_script.pop_back();  // Remove trailing slash
+    executeCommand("sudo " + kill_script + "/sh_kill_all_camera_apps.sh");
     std::this_thread::sleep_for(std::chrono::seconds(2));
 }
 
@@ -273,6 +307,7 @@ int main(int argc, char *argv[])
     bool enable_rpi_cam_capture = false;
     bool enable_tracker = false;
     bool enable_ai_tracker = false;
+    bool enable_generic_ai_tracker = false;
     bool enable_de_camera = true; // Enabled by default
     std::string postProcessFilePath;
     std::vector<std::string> scripts_to_execute; // To store script paths
@@ -284,13 +319,16 @@ int main(int argc, char *argv[])
         {"enable-rpi-cam-capture", no_argument, 0, 'c'},
         {"enable-tracker", no_argument, 0, 't'},
         {"enable-ai-tracker", no_argument, 0, 'a'},
+        {"enable-generic-ai-tracker", no_argument, 0, 'g'},
         {"disable-de-camera", no_argument, 0, 'd'},
         {"execute", required_argument, 0, 'e'},
+        {"drone-engage-path", required_argument, 0, 'D'},
+        {"scripts-path", required_argument, 0, 'S'},
         {"version", no_argument, 0, 'v'},
         {0, 0, 0, 0}};
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "ctade:v", long_options, nullptr)) != -1)
+    while ((opt = getopt_long(argc, argv, "ctade:D:S:gv", long_options, nullptr)) != -1)
     {
         switch (opt)
         {
@@ -302,6 +340,9 @@ int main(int argc, char *argv[])
             break;
         case 'a':
             enable_ai_tracker = true;
+            break;
+        case 'g':
+            enable_generic_ai_tracker = true;
             break;
         case 'd':
             enable_de_camera = false;
@@ -318,11 +359,42 @@ int main(int argc, char *argv[])
         case 'v':
             std::cout << "Version: " << VERSION_APP << std::endl;
             return 0;
+        case 'D':
+            if (optarg && optarg[0] != '\0')
+            {
+                BASE_DRONE_ENGAGE_PATH = optarg;
+                // Ensure path ends with exactly one /
+                if (BASE_DRONE_ENGAGE_PATH.back() != '/')
+                    BASE_DRONE_ENGAGE_PATH += "/";
+            }
+            else
+            {
+                std::cerr << "Error: No valid drone engage path provided for --drone-engage-path option." << std::endl;
+                return 1;
+            }
+            break;
+        case 'S':
+            if (optarg && optarg[0] != '\0')
+            {
+                SCRIPTS_PATH = optarg;
+                // Ensure path ends with exactly one /
+                if (SCRIPTS_PATH.back() != '/')
+                    SCRIPTS_PATH += "/";
+            }
+            else
+            {
+                std::cerr << "Error: No valid scripts path provided for --scripts-path option." << std::endl;
+                return 1;
+            }
+            break;
         default:
-            std::cerr << "Usage: " << argv[0] << " [--enable-rpi-cam-capture] [--enable-tracker] [--enable-ai-tracker] [--disable-de-camera] [--execute script_path] [postprocess_file_path]" << std::endl;
+            std::cerr << "Usage: " << argv[0] << " [--enable-rpi-cam-capture] [--enable-tracker] [--enable-ai-tracker] [--enable-generic-ai-tracker] [--disable-de-camera] [--execute script_path] [--drone-engage-path path] [--scripts-path path] [postprocess_file_path]" << std::endl;
             std::cerr << "Example: " << argv[0] << " --enable-rpi-cam-capture --enable-tracker" << std::endl;
             std::cerr << "Example: " << argv[0] << " --enable-ai-tracker \"/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json\"" << std::endl;
+            std::cerr << "Example: " << argv[0] << " --enable-generic-ai-tracker" << std::endl;
             std::cerr << "Example: " << argv[0] << " --enable-rpi-cam-capture --execute /path/to/script.sh" << std::endl;
+            std::cerr << "Example: " << argv[0] << " --drone-engage-path /custom/path/drone_engage --enable-rpi-cam-capture" << std::endl;
+            std::cerr << "Example: " << argv[0] << " --scripts-path /custom/scripts --enable-rpi-cam-capture" << std::endl;
             return 1;
         }
     }
@@ -333,6 +405,31 @@ int main(int argc, char *argv[])
         postProcessFilePath = argv[optind];
     }
 
+    // Update derived module paths based on final base path (after parsing arguments)
+    BASE_CAMERA_MODULE_PATH = BASE_DRONE_ENGAGE_PATH + "de_camera/";
+    BASE_TRACKER_MODULE_PATH = BASE_DRONE_ENGAGE_PATH + "de_tracking/";
+    BASE_AI_TRACKER_MODULE_PATH = BASE_DRONE_ENGAGE_PATH + "de_ai_tracker/";
+    std::string BASE_GENERIC_AI_MODULE_PATH = BASE_DRONE_ENGAGE_PATH + "de_yolo_generic/";
+
+    // Update module paths based on final base paths (after parsing arguments)
+    const std::string DE_CAMERA_MODULE = BASE_CAMERA_MODULE_PATH + "de_camera";
+    const std::string DE_CAMERA_CONFIG = BASE_CAMERA_MODULE_PATH + "de_camera.config.module.json";
+    const std::string TRACKING_MODULE = BASE_TRACKER_MODULE_PATH + "de_tracker";
+    const std::string TRACKING_CONFIG = BASE_TRACKER_MODULE_PATH + "de_tracker.config.module.json";
+    const std::string AI_TRACKER_MODULE = BASE_AI_TRACKER_MODULE_PATH + "de_ai_tracker.so";
+    const std::string AI_TRACKER_CONFIG = BASE_AI_TRACKER_MODULE_PATH + "de_ai_tracker.config.module.json";
+    const std::string GENERIC_AI_MODULE = BASE_GENERIC_AI_MODULE_PATH + "de_yolo_generic";
+    const std::string GENERIC_AI_CONFIG = BASE_GENERIC_AI_MODULE_PATH + "de_yolo_ai_generic.config.module.json";
+
+    // Display current paths for debugging
+    std::cout << "Using paths:" << std::endl;
+    std::cout << "  DroneEngage: " << BASE_DRONE_ENGAGE_PATH << std::endl;
+    std::cout << "  Camera: " << BASE_CAMERA_MODULE_PATH << std::endl;
+    std::cout << "  Tracker: " << BASE_TRACKER_MODULE_PATH << std::endl;
+    std::cout << "  AI Tracker: " << BASE_AI_TRACKER_MODULE_PATH << std::endl;
+    std::cout << "  Generic AI: " << BASE_GENERIC_AI_MODULE_PATH << std::endl;
+    std::cout << "  Scripts: " << SCRIPTS_PATH << std::endl;
+
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
@@ -340,7 +437,9 @@ int main(int argc, char *argv[])
     preemptiveKill();
 
     // Step 2: Always load v4l2loopback module
-    if (!executeCommand("/home/pi/scripts/sh_camera_create_named_vc.sh"))
+    std::string create_vc_script = SCRIPTS_PATH;
+    if (create_vc_script.back() == '/') create_vc_script.pop_back();  // Remove trailing slash
+    if (!executeCommand(create_vc_script + "/sh_camera_create_named_vc.sh"))
     {
         std::cerr << "Failed to load v4l2loopback module. Exiting." << std::endl;
         return 1;
@@ -403,13 +502,17 @@ int main(int argc, char *argv[])
             return 1;
         }
     }
+    else
+    {
+        std::cout << "Skipping de_tracker (not enabled)." << std::endl;
+    }
 
     // Step 6: Start AI tracking module (if enabled) after 5 seconds
     if (enable_ai_tracker)
     {
         std::this_thread::sleep_for(std::chrono::seconds(5));
         std::cout << "Starting de_ai_tracker.so..." << std::endl;
-        ai_tracking_camera_pid = startModule(AI_TRACKING_MODULE, AI_TRACKING_CONFIG, "de_ai_tracker.so", BASE_AI_TRACKER_MODULE_PATH);
+        ai_tracking_camera_pid = startModule(AI_TRACKER_MODULE, AI_TRACKER_CONFIG, "de_ai_tracker.so", BASE_AI_TRACKER_MODULE_PATH);
         if (ai_tracking_camera_pid == -1)
         {
             std::cerr << "CRITICAL: Failed to start de_ai_tracker.so. Exiting." << std::endl;
@@ -417,8 +520,30 @@ int main(int argc, char *argv[])
             return 1;
         }
     }
+    else
+    {
+        std::cout << "Skipping de_ai_tracker.so (not enabled)." << std::endl;
+    }
 
-    // Step 7: Start de_camera module (if enabled) after 15 seconds
+    // Step 7: Start Generic AI tracking module (if enabled) after 5 seconds
+    if (enable_generic_ai_tracker)
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+        std::cout << "Starting de_yolo_generic..." << std::endl;
+        generic_ai_tracking_camera_pid = startModule(GENERIC_AI_MODULE, GENERIC_AI_CONFIG, "de_yolo_generic", BASE_GENERIC_AI_MODULE_PATH);
+        if (generic_ai_tracking_camera_pid == -1)
+        {
+            std::cerr << "CRITICAL: Failed to start de_yolo_generic. Exiting." << std::endl;
+            stopAllChildren();
+            return 1;
+        }
+    }
+    else
+    {
+        std::cout << "Skipping de_yolo_generic (not enabled)." << std::endl;
+    }
+
+    // Step 8: Start de_camera module (if enabled) after 15 seconds
     if (enable_de_camera)
     {
         std::this_thread::sleep_for(std::chrono::seconds(15));

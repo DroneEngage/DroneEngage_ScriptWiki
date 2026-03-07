@@ -1,48 +1,74 @@
 #!/bin/bash
 
-# This script creates named virtual camera devices using v4l2loopback.
-# It assumes the v4l2loopback module is either not loaded or loaded with compatible settings.
+# --- Configuration ---
+NUM_DEVICES=6
+VIDEO_NR="2,3,4,5,6,7"
+CARD_LABELS="DE-CAM1,DE-CAM2,DE-TRK,DE-RPI,DE-THERMAL,DE-AI"
+EXCLUSIVE_CAPS="1,1,1,1,1,1"
 
 # Define color codes
 RED='\033[1;31m'
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[1;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# --- Configuration ---
-NUM_DEVICES=5
-VIDEO_NR="1,2,3,4,5"
-CARD_LABELS="DE-CAM1,DE-CAM2,DE-TRK,DE-RPI,DE-THERMAL"
-EXCLUSIVE_CAPS="1,1,1,1,1"
+echo -e "${BLUE}--- v4l2loopback Device Manager ---${NC}"
 
-# Check if v4l2loopback is already loaded
+# 1. Check if the module is already loaded
+if lsmod | grep -q v4l2loopback; then
+    echo -e "${YELLOW}Module v4l2loopback is already loaded.${NC}"
+    
+    # Check if the current loaded labels match our target
+    # This avoids flickering/disconnecting if the setup is already correct
+    current_labels=$(cat /sys/module/v4l2loopback/parameters/card_label 2>/dev/null)
+    
+    if [[ "$current_labels" == "$CARD_LABELS" ]]; then
+        echo -e "${GREEN}Configuration already matches. No reload needed.${NC}"
+    else
+        echo -e "${RED}Configuration mismatch detected. Reloading module...${NC}"
+        echo -e "${YELLOW}Note: This will fail if any app (OBS, Zoom, etc.) is using the cameras.${NC}"
+        
+        sudo modprobe -r v4l2loopback
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}Error: Could not unload v4l2loopback. Is a camera in use?${NC}"
+            exit 1
+        fi
+    fi
+fi
+
+# 2. Load the module with the specified parameters
 if ! lsmod | grep -q v4l2loopback; then
-    echo -e "${YELLOW}Loading v4l2loopback module...${NC}"
-    # Attempt to load the module with specified parameters
-    sudo modprobe v4l2loopback devices=${NUM_DEVICES} video_nr=${VIDEO_NR} card_label="${CARD_LABELS}" exclusive_caps=${EXCLUSIVE_CAPS}
+    echo -e "${YELLOW}Applying configuration for ${NUM_DEVICES} devices...${NC}"
+    sudo modprobe v4l2loopback \
+        devices=${NUM_DEVICES} \
+        video_nr=${VIDEO_NR} \
+        card_label="${CARD_LABELS}" \
+        exclusive_caps=${EXCLUSIVE_CAPS}
+    
     if [ $? -ne 0 ]; then
         echo -e "${RED}Error: Failed to load v4l2loopback module.${NC}"
         exit 1
     fi
-else
-    echo -e "${GREEN}v4l2loopback module is already loaded.${NC}"
+    echo -e "${GREEN}Module loaded successfully.${NC}"
 fi
 
-echo -e "${BLUE}Virtual video devices created/verified:${NC}"
+# 3. Verification Table
+echo -e "\n${BLUE}Virtual Device Mapping:${NC}"
+echo "------------------------------------------"
+printf "%-15s | %-20s\n" "Device Node" "Card Label"
+echo "------------------------------------------"
 
-#v4l2-ctl --list-devices
-
-ls --color=always /sys/devices/virtual/video4linux/
-
-# 2. Iterate through virtual video devices in sysfs
-for syspath in /sys/devices/virtual/video4linux/video*; do
-    if [ -d "$syspath" ]; then
-        # Get the device node name (e.g., video1)
-        dev_node=$(basename "$syspath")
-        # Read the label assigned to this virtual device
-        label=$(cat "$syspath/name")
-        
-        printf "/dev/%-8s : %s\n" "$dev_node" "$label"
+# Split the VIDEO_NR string into an array for checking
+IFS=',' read -ra ADDR <<< "$VIDEO_NR"
+for i in "${ADDR[@]}"; do
+    dev_path="/dev/video$i"
+    if [ -e "$dev_path" ]; then
+        # Fetch the label directly from the kernel name attribute
+        label=$(cat /sys/class/video4linux/video$i/name 2>/dev/null)
+        printf "${GREEN}%-15s${NC} | %-20s\n" "$dev_path" "$label"
+    else
+        printf "${RED}%-15s${NC} | %-20s\n" "$dev_path" "MISSING"
     fi
 done
+echo "------------------------------------------"

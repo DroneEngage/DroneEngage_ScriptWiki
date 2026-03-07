@@ -16,6 +16,7 @@ This folder contains a C++ wrapper application for managing DroneEngage camera a
 ## Features
 
 - **Process Management**: Forks and monitors child processes for camera pipelines (`rpicam-vid | ffmpeg`), tracking modules (`de_tracker`, `de_ai_tracker`), and the main camera module (`de_camera`).
+- **Dual AI Architecture**: Supports both IMX500 hardware AI and HAILO software AI processing.
 - **Virtual Camera Setup**: Automatically loads `v4l2loopback` kernel module to create named virtual cameras (`DE-CAM1`, `DE-CAM2`, `DE-TRK`, `DE-RPI`, `DE-THERMAL`).
 - **Preemptive Cleanup**: Kills any stale camera processes before starting new instances to prevent conflicts.
 - **Signal Handling**: Gracefully handles `SIGINT` and `SIGTERM` signals, stopping all child processes cleanly.
@@ -28,46 +29,90 @@ This folder contains a C++ wrapper application for managing DroneEngage camera a
 ./camera_manager_wrapper [OPTIONS] [postprocess_file_path]
 ```
 
-The optional `postprocess_file_path` (if provided) is passed to the RPI camera pipeline script
-`sh_camera_run_rpi_camera.sh` and is typically a JSON file (for example, the IMX500
-post‑processing configuration).
-
 ### Options
 
 | Option | Description |
 |--------|-------------|
 | `-c`, `--enable-rpi-cam-capture` | Enable Raspberry Pi camera capture pipeline |
-| `-t`, `--enable-tracker` | Enable `de_tracker` tracking module |
-| `-a`, `--enable-ai-tracker` | Enable `de_ai_tracker` AI tracking module |
+| `-t`, `--enable-tracker` | Enable `de_tracker` software tracking module |
+| `-a`, `--enable-ai-tracker` | Enable `de_ai_tracker.so` HAILO AI tracking module |
 | `-d`, `--disable-de-camera` | Disable `de_camera` module (enabled by default) |
 | `-e`, `--execute <script>` | Execute a custom script (can be specified multiple times) |
 | `-v`, `--version` | Print version and exit |
 
 ### Examples
 
+#### **IMX500 Hardware AI + Software Tracking**
 ```bash
-# 1) RPI camera only (virtual camera source)
-./camera_manager_wrapper --enable-rpi-cam-capture
+# Sony IMX500 camera with hardware AI + software tracking
+./camera_manager_wrapper --enable-rpi-cam-capture --enable-tracker "/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json"
+```
+- Uses Sony IMX500 camera with built-in hardware AI acceleration
+- JSON configures IMX500 AI model (MobileNet-SSD)
+- Software tracker (`de_tracker`) handles object tracking/detection
+- **Used by**: `de_camera_imx_ai.service`
 
-# 2) RPI camera + tracking module
+#### **HAILO Software AI Tracking**
+```bash
+# HAILO AI accelerator with software AI processing
+./camera_manager_wrapper --enable-ai-tracker
+```
+- Uses HAILO AI accelerator for software-based AI processing
+- Runs `de_ai_tracker.so` module with AI inference
+- No camera pipeline needed (uses existing video streams)
+
+#### **Regular Camera + Software Tracking**
+```bash
+# Standard RPi camera with software tracking
 ./camera_manager_wrapper --enable-rpi-cam-capture --enable-tracker
+```
+- Standard RPi camera without hardware AI
+- Software-based tracking and detection
+- **Used by**: `de_camera_tracker.service`
 
-# 3) RPI Sony IMX500 camera with AI post‑processing
-#    The JSON file is passed as postprocess_file_path to the RPI pipeline
-./camera_manager_wrapper --enable-rpi-cam-capture --enable-ai-tracker \
-  "/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json"
+#### **Camera Only**
+```bash
+# Camera pipeline without tracking
+./camera_manager_wrapper --enable-rpi-cam-capture
+```
+- **Used by**: `de_camera_rpi_cam.service`
 
-# 4) RPI camera with an extra helper script
-./camera_manager_wrapper --enable-rpi-cam-capture --execute /path/to/script.sh
-
-# 5) Start tracking without de_camera
-./camera_manager_wrapper --disable-de-camera --enable-tracker
+#### **Custom Script Integration**
+```bash
+# Camera with custom post-processing script
+./camera_manager_wrapper --enable-rpi-cam-capture --execute /path/to/script.sh /path/to/config.json
 ```
 
-> **Note:** Older invocations such as
-> `./camera_manager_wrapper 1 "/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json"`
-> are not supported by this implementation. The wrapper only accepts options plus
-> an optional single positional `postprocess_file_path` as shown above.
+## AI Processing Architecture
+
+The wrapper supports two distinct AI processing approaches:
+
+### **IMX500 Hardware AI (Sony RPi AI Camera)**
+- **Enabled with**: `-c` (camera) + `-t` (tracker) + JSON config file
+- **AI Processing**: Done on-camera hardware (Sony IMX500 sensor)
+- **JSON Purpose**: Configures IMX500 AI model and parameters
+- **Tracker**: Software-based (`de_tracker`) for object tracking
+- **Performance**: High-performance AI with minimal CPU load
+- **Service**: `de_camera_imx_ai.service`
+
+### **HAILO Software AI**
+- **Enabled with**: `-a` (AI tracker)
+- **AI Processing**: Software inference using HAILO accelerator
+- **Module**: `de_ai_tracker.so` shared library
+- **Performance**: Flexible AI model deployment with HAILO hardware
+- **CPU Load**: Moderate (software inference)
+
+### **Key Differences**
+| Feature | IMX500 Hardware AI | HAILO Software AI |
+|---------|-------------------|------------------|
+| **AI Location** | Camera hardware | Host software |
+| **JSON Config** | IMX500 model config | Not used |
+| **Tracker Module** | `de_tracker` | `de_ai_tracker.so` |
+| **CPU Load** | Low | Moderate |
+| **Flexibility** | Fixed models | Custom models |
+| **Startup Delay** | 15s (tracker) | 5s (AI tracker) |
+
+---
 
 ## Module Paths
 

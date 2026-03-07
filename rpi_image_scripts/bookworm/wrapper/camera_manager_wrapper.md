@@ -89,19 +89,58 @@ This program is typically invoked from shell scripts or deployment tools to star
 322:325:/home/mhefny/TDisk/public_versions/scripts_wiki/rpi_image_scripts/bookworm/wrapper/camera_manager_wrapper.cpp
 std::cerr << "Usage: " << argv[0] << " [--enable-rpi-cam-capture] [--enable-tracker] [--enable-ai-tracker] [--disable-de-camera] [--execute script_path] [postprocess_file_path]" << std::endl;
 std::cerr << "Example: " << argv[0] << " --enable-rpi-cam-capture --enable-tracker" << std::endl;
-std::cerr << "Example: " << argv[0] << " --enable-ai-tracker \"/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json\"" << std::endl;
+std::cerr << "Example: " << argv[0] << " --enable-rpi-cam-capture --enable-tracker \"/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json\"" << std::endl;
+std::cerr << "Example: " << argv[0] << " --enable-ai-tracker" << std::endl;
 std::cerr << "Example: " << argv[0] << " --enable-rpi-cam-capture --execute /path/to/script.sh" << std::endl;
 ```
 
 These show how the binary can be used:
-- To enable local camera capture and tracking:  
+- **IMX500 Hardware AI + Software Tracking**:  
+  `./camera_manager_wrapper --enable-rpi-cam-capture --enable-tracker "/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json"`
+  - Uses Sony IMX500 camera with built-in hardware AI acceleration
+  - JSON configures the IMX500 AI model (e.g., MobileNet-SSD)
+  - Software tracker (`de_tracker`) handles object tracking/detection
+- **HAILO Software AI Tracking**:  
+  `./camera_manager_wrapper --enable-ai-tracker`
+  - Uses HAILO AI accelerator for software-based AI processing
+  - Runs `de_ai_tracker.so` module with AI inference
+  - No camera pipeline needed (uses existing video streams)
+- **Regular Camera + Tracking**:  
   `./camera_manager_wrapper --enable-rpi-cam-capture --enable-tracker`
-- To run AI-based tracking with a model config:  
-  `./camera_manager_wrapper --enable-ai-tracker "/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json"`
-- To run with a custom post-processing script:  
+  - Standard RPi camera without hardware AI
+  - Software-based tracking and detection
+- **Custom Script Integration**:  
   `./camera_manager_wrapper --enable-rpi-cam-capture --execute /home/pi/myscript.sh /path/to/config.json`
 
 The `main` function is central to the camera management system on the Raspberry Pi and appears to be invoked during system startup or via service managers to initialize imaging pipelines.
+
+---
+
+### AI Processing Architecture
+
+The wrapper supports two distinct AI processing approaches:
+
+#### **IMX500 Hardware AI (Sony RPi AI Camera)**
+- **Enabled with**: `-c` (camera) + `-t` (tracker) + JSON config file
+- **AI Processing**: Done on-camera hardware (Sony IMX500 sensor)
+- **JSON Purpose**: Configures IMX500 AI model and parameters
+- **Tracker**: Software-based (`de_tracker`) for object tracking
+- **Use Case**: High-performance AI with minimal CPU load
+
+#### **HAILO Software AI**
+- **Enabled with**: `-a` (AI tracker)
+- **AI Processing**: Software inference using HAILO accelerator
+- **Module**: `de_ai_tracker.so` shared library
+- **Use Case**: Flexible AI model deployment with HAILO hardware
+
+#### **Key Differences**
+| Feature | IMX500 Hardware AI | HAILO Software AI |
+|---------|-------------------|------------------|
+| **AI Location** | Camera hardware | Host software |
+| **JSON Config** | IMX500 model config | Not used |
+| **Tracker Module** | `de_tracker` | `de_ai_tracker.so` |
+| **CPU Load** | Low | Moderate |
+| **Flexibility** | Fixed models | Custom models |
 
 ---
 

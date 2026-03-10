@@ -1,0 +1,25 @@
+[Unit]
+Description=Drone Engage Camera with Initialization of DRONE Ver 2.0
+After=network.target multi-user.target
+Documentation=https://droneengage.com
+
+
+[Service]
+Type=simple
+WorkingDirectory=/home/treider/drone_engage/scripts/wrapper/
+ExecStart= /home/treider/drone_engage/scripts/wrapper/camera_manager_wrapper  -t -g  -D /home/treider/drone_engage -S /home/treider/drone_engage/scripts/
+
+Restart=on-failure
+RestartSec=5s
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=camera_wrapper
+
+# You might need to adjust user/group if camera access is restricted
+# User=pi
+# Group=video
+
+[Install]
+WantedBy=multi-user.target
+

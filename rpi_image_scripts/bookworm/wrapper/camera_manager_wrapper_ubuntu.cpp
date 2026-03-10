@@ -19,15 +19,7 @@
 #include <csignal>     // For SIGTERM, SIGINT
 #include <getopt.h>    // For parsing command-line options
 
-#define VERSION_APP "4.2.0"
-
-// Module startup delays in seconds since start - not incremental
-#define GIMBAL_MODULE_DELAY_SEC 2
-#define AI_TRACKER_MODULE_DELAY_SEC 5
-#define GENERIC_AI_MODULE_DELAY_SEC 5
-#define TRACKER_MODULE_DELAY_SEC 15
-#define DE_CAMERA_MODULE_DELAY_SEC 25
-
+#define VERSION_APP "4.0.0"
 
 // Global PID variables to track child processes
 pid_t camera_pid = -1;
@@ -383,13 +375,6 @@ int main(int argc, char *argv[])
     bool enable_de_camera = true; // Enabled by default
     std::string postProcessFilePath;
     std::vector<std::string> scripts_to_execute; // To store script paths
-    
-    // Module startup delays in seconds (with defaults)
-    int ai_tracker_delay_sec = AI_TRACKER_MODULE_DELAY_SEC;
-    int generic_ai_delay_sec = GENERIC_AI_MODULE_DELAY_SEC;
-    int tracker_delay_sec = TRACKER_MODULE_DELAY_SEC;
-    int de_camera_delay_sec = DE_CAMERA_MODULE_DELAY_SEC;
-    int gimbal_delay_sec = 0; // Default: no delay for gimbal
 
     std::cout << "Camera Wrapper ver: " << VERSION_APP << std::endl;
 
@@ -404,16 +389,11 @@ int main(int argc, char *argv[])
         {"execute", required_argument, 0, 'e'},
         {"drone-engage-path", required_argument, 0, 'D'},
         {"scripts-path", required_argument, 0, 'S'},
-        {"ai-tracker-delay", required_argument, 0, 'A'},
-        {"generic-ai-delay", required_argument, 0, 'G'},
-        {"tracker-delay", required_argument, 0, 'T'},
-        {"de-camera-delay", required_argument, 0, 'C'},
-        {"gimbal-delay", required_argument, 0, 'M'},
         {"version", no_argument, 0, 'v'},
         {0, 0, 0, 0}};
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "cmtade:D:S:gvA:G:T:C:M:", long_options, nullptr)) != -1)
+    while ((opt = getopt_long(argc, argv, "cmtade:D:S:gv", long_options, nullptr)) != -1)
     {
         switch (opt)
         {
@@ -475,43 +455,8 @@ int main(int argc, char *argv[])
                 return 1;
             }
             break;
-        case 'A':
-            if (optarg && optarg[0] != '\0')
-            {
-                ai_tracker_delay_sec = std::atoi(optarg);
-                if (ai_tracker_delay_sec < 0) ai_tracker_delay_sec = AI_TRACKER_MODULE_DELAY_SEC;
-            }
-            break;
-        case 'G':
-            if (optarg && optarg[0] != '\0')
-            {
-                generic_ai_delay_sec = std::atoi(optarg);
-                if (generic_ai_delay_sec < 0) generic_ai_delay_sec = GENERIC_AI_MODULE_DELAY_SEC;
-            }
-            break;
-        case 'T':
-            if (optarg && optarg[0] != '\0')
-            {
-                tracker_delay_sec = std::atoi(optarg);
-                if (tracker_delay_sec < 0) tracker_delay_sec = TRACKER_MODULE_DELAY_SEC;
-            }
-            break;
-        case 'C':
-            if (optarg && optarg[0] != '\0')
-            {
-                de_camera_delay_sec = std::atoi(optarg);
-                if (de_camera_delay_sec < 0) de_camera_delay_sec = DE_CAMERA_MODULE_DELAY_SEC;
-            }
-            break;
-        case 'M':
-            if (optarg && optarg[0] != '\0')
-            {
-                gimbal_delay_sec = std::atoi(optarg);
-                if (gimbal_delay_sec < 0) gimbal_delay_sec = 0;
-            }
-            break;
         default:
-            std::cerr << "Usage: " << argv[0] << " [--enable-rpi-cam-capture] [--enable-gimbal-capture] [--enable-tracker] [--enable-ai-tracker] [--enable-generic-ai-tracker] [--disable-de-camera] [--execute script_path] [--drone-engage-path path] [--scripts-path path] [--ai-tracker-delay seconds] [--generic-ai-delay seconds] [--tracker-delay seconds] [--de-camera-delay seconds] [--gimbal-delay seconds] [postprocess_file_path]" << std::endl;
+            std::cerr << "Usage: " << argv[0] << " [--enable-rpi-cam-capture] [--enable-gimbal-capture] [--enable-tracker] [--enable-ai-tracker] [--enable-generic-ai-tracker] [--disable-de-camera] [--execute script_path] [--drone-engage-path path] [--scripts-path path] [postprocess_file_path]" << std::endl;
             std::cerr << "Example: " << argv[0] << " --enable-rpi-cam-capture --enable-tracker" << std::endl;
             std::cerr << "Example: " << argv[0] << " --enable-gimbal-capture" << std::endl;
             std::cerr << "Example: " << argv[0] << " --enable-ai-tracker \"/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json\"" << std::endl;
@@ -519,9 +464,6 @@ int main(int argc, char *argv[])
             std::cerr << "Example: " << argv[0] << " --enable-rpi-cam-capture --execute /path/to/script.sh" << std::endl;
             std::cerr << "Example: " << argv[0] << " --drone-engage-path /custom/path/drone_engage --enable-rpi-cam-capture" << std::endl;
             std::cerr << "Example: " << argv[0] << " --scripts-path /custom/scripts --enable-rpi-cam-capture" << std::endl;
-            std::cerr << "Example: " << argv[0] << " --enable-generic-ai-tracker --generic-ai-delay 10" << std::endl;
-            std::cerr << "Example: " << argv[0] << " --enable-tracker --tracker-delay 20 --de-camera-delay 30" << std::endl;
-            std::cerr << "Example: " << argv[0] << " --enable-gimbal-capture --gimbal-delay 5" << std::endl;
             return 1;
         }
     }
@@ -548,7 +490,7 @@ int main(int argc, char *argv[])
     const std::string GENERIC_AI_MODULE = BASE_GENERIC_AI_MODULE_PATH + "de_yolo_generic";
     const std::string GENERIC_AI_CONFIG = BASE_GENERIC_AI_MODULE_PATH + "de_yolo_ai_generic.config.module.json";
 
-    // Display current paths and delays for debugging
+    // Display current paths for debugging
     std::cout << "Using paths:" << std::endl;
     std::cout << "  DroneEngage: " << BASE_DRONE_ENGAGE_PATH << std::endl;
     std::cout << "  Camera: " << BASE_CAMERA_MODULE_PATH << std::endl;
@@ -556,12 +498,6 @@ int main(int argc, char *argv[])
     std::cout << "  AI Tracker: " << BASE_AI_TRACKER_MODULE_PATH << std::endl;
     std::cout << "  Generic AI: " << BASE_GENERIC_AI_MODULE_PATH << std::endl;
     std::cout << "  Scripts: " << SCRIPTS_PATH << std::endl;
-    std::cout << "Module delays:" << std::endl;
-    std::cout << "  AI Tracker: " << ai_tracker_delay_sec << "s" << std::endl;
-    std::cout << "  Generic AI: " << generic_ai_delay_sec << "s" << std::endl;
-    std::cout << "  Tracker: " << tracker_delay_sec << "s" << std::endl;
-    std::cout << "  DE Camera: " << de_camera_delay_sec << "s" << std::endl;
-    std::cout << "  Gimbal: " << gimbal_delay_sec << "s" << std::endl;
 
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
@@ -604,11 +540,6 @@ int main(int argc, char *argv[])
     // Step 3b: Start gimbal RTSP | ffmpeg pipeline if enabled
     if (enable_gimbal_capture)
     {
-        if (gimbal_delay_sec > 0)
-        {
-            std::cout << "Waiting " << gimbal_delay_sec << " seconds before starting gimbal camera pipeline..." << std::endl;
-            std::this_thread::sleep_for(std::chrono::seconds(gimbal_delay_sec));
-        }
         std::cout << "Starting gimbal camera pipeline..." << std::endl;
         gimbal_camera_pid = startGimbalCameraPipeline();
         if (gimbal_camera_pid == -1)
@@ -644,10 +575,10 @@ int main(int argc, char *argv[])
         }
     }
 
-    // Step 5: Start tracking module (if enabled) after tracker_delay_sec seconds
+    // Step 5: Start tracking module (if enabled) after 15 seconds
     if (enable_tracker)
     {
-        std::this_thread::sleep_for(std::chrono::seconds(tracker_delay_sec));
+        std::this_thread::sleep_for(std::chrono::seconds(15));
         std::cout << "Starting de_tracker..." << std::endl;
         tracking_camera_pid = startModule(TRACKING_MODULE, TRACKING_CONFIG, "de_tracker", BASE_TRACKER_MODULE_PATH);
         if (tracking_camera_pid == -1)
@@ -662,10 +593,10 @@ int main(int argc, char *argv[])
         std::cout << "Skipping de_tracker (not enabled)." << std::endl;
     }
 
-    // Step 6: Start AI tracking module (if enabled) after ai_tracker_delay_sec seconds
+    // Step 6: Start AI tracking module (if enabled) after 5 seconds
     if (enable_ai_tracker)
     {
-        std::this_thread::sleep_for(std::chrono::seconds(ai_tracker_delay_sec));
+        std::this_thread::sleep_for(std::chrono::seconds(5));
         std::cout << "Starting de_ai_tracker.so..." << std::endl;
         ai_tracking_camera_pid = startModule(AI_TRACKER_MODULE, AI_TRACKER_CONFIG, "de_ai_tracker.so", BASE_AI_TRACKER_MODULE_PATH);
         if (ai_tracking_camera_pid == -1)
@@ -680,10 +611,10 @@ int main(int argc, char *argv[])
         std::cout << "Skipping de_ai_tracker.so (not enabled)." << std::endl;
     }
 
-    // Step 7: Start Generic AI tracking module (if enabled) after generic_ai_delay_sec seconds
+    // Step 7: Start Generic AI tracking module (if enabled) after 5 seconds
     if (enable_generic_ai_tracker)
     {
-        std::this_thread::sleep_for(std::chrono::seconds(generic_ai_delay_sec));
+        std::this_thread::sleep_for(std::chrono::seconds(5));
         std::cout << "Starting de_yolo_generic..." << std::endl;
         generic_ai_tracking_camera_pid = startModule(GENERIC_AI_MODULE, GENERIC_AI_CONFIG, "de_yolo_generic", BASE_GENERIC_AI_MODULE_PATH);
         if (generic_ai_tracking_camera_pid == -1)
@@ -698,10 +629,10 @@ int main(int argc, char *argv[])
         std::cout << "Skipping de_yolo_generic (not enabled)." << std::endl;
     }
 
-    // Step 8: Start de_camera module (if enabled) after de_camera_delay_sec seconds
+    // Step 8: Start de_camera module (if enabled) after 15 seconds
     if (enable_de_camera)
     {
-        std::this_thread::sleep_for(std::chrono::seconds(de_camera_delay_sec));
+        std::this_thread::sleep_for(std::chrono::seconds(15));
         std::cout << "Starting de_camera..." << std::endl;
         de_camera_pid = startModule(DE_CAMERA_MODULE, DE_CAMERA_CONFIG, "de_camera", BASE_CAMERA_MODULE_PATH);
         if (de_camera_pid == -1)

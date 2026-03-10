@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # --- Configuration ---
-NUM_DEVICES=6
-VIDEO_NR="2,3,4,5,6,7"
-CARD_LABELS="DE-CAM1,DE-CAM2,DE-TRK,DE-RPI,DE-THERMAL,DE-AI"
-EXCLUSIVE_CAPS="1,1,1,1,1,1"
+NUM_DEVICES=7
+VIDEO_NR="2,3,4,5,6,7,8"
+CARD_LABELS="DE-CAM1,DE-CAM2,DE-TRK,DE-RPI,DE-THERMAL,DE-AI,DE-GIMBAL"
+EXCLUSIVE_CAPS="1,1,1,1,1,1,1"
 
 # Define color codes
 RED='\033[1;31m'
@@ -24,7 +24,14 @@ if lsmod | grep -q v4l2loopback; then
     current_labels=$(cat /sys/module/v4l2loopback/parameters/card_label 2>/dev/null)
     
     if [[ "$current_labels" == "$CARD_LABELS" ]]; then
-        echo -e "${GREEN}Configuration already matches. No reload needed.${NC}"
+        echo -e "${GREEN}Configuration matches, but forcing reload to reset device state...${NC}"
+        echo -e "${YELLOW}Note: This will fail if any app (OBS, Zoom, etc.) is using the cameras.${NC}"
+        
+        sudo modprobe -r v4l2loopback
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}Error: Could not unload v4l2loopback. Is a camera in use?${NC}"
+            exit 1
+        fi
     else
         echo -e "${RED}Configuration mismatch detected. Reloading module...${NC}"
         echo -e "${YELLOW}Note: This will fail if any app (OBS, Zoom, etc.) is using the cameras.${NC}"

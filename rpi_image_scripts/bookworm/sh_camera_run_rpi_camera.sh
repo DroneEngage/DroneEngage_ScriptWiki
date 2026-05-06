@@ -119,11 +119,17 @@ for video_dir in /sys/devices/virtual/video4linux/video*; do
         fi
 
         # Check if the current device's label matches our target, ignoring leading/trailing whitespace
-        if [[ "$current_card_label" =~ ^[[:space:]]*${TARGET_CAM_NAME}[[:space:]]*$ ]]; then
-            DEVICE_NUMBER=$(basename "$video_dir" | sed 's/^video//')
-            TARGET_DEVICE="/dev/video${DEVICE_NUMBER}"
-            break # Found our target, exit loop
-        fi
+        case "$current_card_label" in
+            *"${TARGET_CAM_NAME}"*)
+                # More precise check - ensure TARGET_CAM_NAME is the whole label (ignoring whitespace)
+                trimmed_label=$(echo "$current_card_label" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+                if [ "$trimmed_label" = "$TARGET_CAM_NAME" ]; then
+                    DEVICE_NUMBER=$(basename "$video_dir" | sed 's/^video//')
+                    TARGET_DEVICE="/dev/video${DEVICE_NUMBER}"
+                    break # Found our target, exit loop
+                fi
+                ;;
+        esac
     fi
 done
 
